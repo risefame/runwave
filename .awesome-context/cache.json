@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-12T19:27:31.069Z",
+  "generatedAt": "2026-11-12T19:54:40.231Z",
   "root": ".",
   "parserVersion": 2,
   "graphVersion": 1,
@@ -27,6 +27,17 @@
       "exports": [],
       "summary": "Documentation file.",
       "lastProcessed": "2026-11-12T11:53:36.600Z"
+    },
+    "supabase/README.md": {
+      "hash": "d9957f54e5801ae62cb9b6192252a37ea09efe1dede2fdc5f3355440bee41e67",
+      "size": 3276,
+      "mtimeMs": 1794513046637.2498,
+      "language": "markdown",
+      "symbols": [],
+      "imports": [],
+      "exports": [],
+      "summary": "Documentation file.",
+      "lastProcessed": "2026-11-12T19:54:40.230Z"
     },
     "web/package.json": {
       "hash": "067c91911216121f5df8d388641dac4d3473eee24a83680b47484ecacb38f673",
