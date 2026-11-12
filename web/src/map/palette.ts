@@ -80,4 +80,10 @@ export const palette = {
     trailCore: '#d9fdff',
     route: '#8f7bff',
   },
+
+  /** Чужие территории из Supabase: тёплый янтарный, чтобы не путать со своими. */
+  online: {
+    territory: '#ffb454',
+    outline: '#ffe0a8',
+  },
 } as const;

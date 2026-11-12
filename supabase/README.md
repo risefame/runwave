@@ -4,6 +4,15 @@ SQL-миграции мультиплеерной игры захвата тер
 Supabase Auth (`auth.users`, `auth.uid()`) и RLS. Специфичных для Supabase API
 функций нет — всё работает и на self-hosted Supabase.
 
+## Быстрая установка
+
+Для нового проекта Supabase проще всего открыть `SQL Editor`, вставить целиком
+[`setup.sql`](./setup.sql) и нажать Run. Файл содержит миграции `0001–0004` и
+стартовые города/районы (тестовые прямоугольники Москвы и Тверского).
+
+В Supabase также нужно включить `Authentication → Providers → Anonymous sign-ins`.
+Клиент использует публичный publishable key из `web/src/supabase.ts`.
+
 ## Применение
 
 На Supabase (managed или self-hosted) миграции применяются как обычно:
@@ -14,6 +23,7 @@ supabase db push
 psql "$DATABASE_URL" -f supabase/migrations/0001_schema.sql
 psql "$DATABASE_URL" -f supabase/migrations/0002_rls.sql
 psql "$DATABASE_URL" -f supabase/migrations/0003_functions.sql
+psql "$DATABASE_URL" -f supabase/migrations/0004_api.sql
 ```
 
 `auth.users` и `auth.uid()` уже есть в Supabase. Для локальных тестов на обычном
@@ -23,16 +33,21 @@ PostgreSQL используется заглушка `supabase/tests/00_auth_stu
 ## Основные RPC
 
 ```sql
--- Забег: массив точек {lon, lat, t (epoch ms), accuracy}
+-- Забег: массив точек {lon, lat, t (epoch ms), accuracy}.
+-- Второй аргумент p_rings — замкнутые контуры захватов [[lon, lat], ...].
 select public.submit_run('[
-  {"lon": 37.60, "lat": 55.75, "t": 1700000000000, "accuracy": 5}
+  {"lon": 37.6000, "lat": 55.7500, "t": 1700000000000, "accuracy": 5},
+  {"lon": 37.6005, "lat": 55.7505, "t": 1700000005000, "accuracy": 5}
 ]'::jsonb);
 
 -- Домашняя зона (по умолчанию 300 м из game_config)
 select public.set_home_zone(37.60, 55.75, 300);
 
--- Территории в bbox карты
-select * from public.territories_in_bbox(37.55, 55.70, 37.65, 55.80);
+-- Территории в bbox карты (GeoJSON для веб-клиента)
+select * from public.territories_bbox_geojson(37.55, 55.70, 37.65, 55.80);
+
+-- Город и район по точке
+select * from public.city_at_point(37.60, 55.75);
 
 -- Рейтинг сезона по городу/району
 select * from public.season_leaderboard('city-uuid', null, 50);
@@ -61,6 +76,7 @@ psql -d runwave -v ON_ERROR_STOP=1 -f supabase/tests/00_auth_stub.sql
 psql -d runwave -v ON_ERROR_STOP=1 -f supabase/migrations/0001_schema.sql
 psql -d runwave -v ON_ERROR_STOP=1 -f supabase/migrations/0002_rls.sql
 psql -d runwave -v ON_ERROR_STOP=1 -f supabase/migrations/0003_functions.sql
+psql -d runwave -v ON_ERROR_STOP=1 -f supabase/migrations/0004_api.sql
 psql -d runwave -v ON_ERROR_STOP=1 -f supabase/tests/game_test.sql
 ```
 

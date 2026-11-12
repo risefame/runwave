@@ -212,7 +212,10 @@ grant execute on function public.set_home_zone(double precision, double precisio
 
 -- ——— Приём забега ———
 
-create or replace function public.submit_run(p_points jsonb)
+create or replace function public.submit_run(
+  p_points jsonb,
+  p_rings jsonb default '[]'::jsonb
+)
 returns jsonb
 language plpgsql
 security definer
@@ -246,6 +249,17 @@ declare
   v_loop_dist double precision;
   v_ring geometry;
   v_poly geometry;
+  v_rings jsonb;
+  v_ring_index integer;
+  v_ring_count integer;
+  v_ring_point jsonb;
+  v_ring_lon double precision;
+  v_ring_lat double precision;
+  v_ring_vertices geometry[];
+  v_ring_line geometry;
+  v_ring_geom geometry;
+  v_rings_geom geometry;
+  v_ring_ok boolean;
   v_claim geometry;
   v_forbidden geometry;
   v_own geometry;
@@ -467,7 +481,92 @@ begin
 
   v_loop_dist := st_distance(v_start::geography, v_end::geography);
 
-  if v_count >= 3 and v_loop_dist <= v_loop_radius then
+  v_poly := null;
+
+  -- Клиент присылает замкнутые контуры захватов (p_rings). Проверяем, что
+  -- каждая вершина лежит рядом с треком, и объединяем контуры в одну претензию.
+  if p_rings is not null
+     and jsonb_typeof(p_rings) = 'array'
+     and jsonb_array_length(p_rings) > 0 then
+    for v_ring_index in 0 .. jsonb_array_length(p_rings) - 1 loop
+      v_rings := p_rings -> v_ring_index;
+
+      if jsonb_typeof(v_rings) <> 'array' then
+        continue;
+      end if;
+
+      v_ring_count := jsonb_array_length(v_rings);
+      if v_ring_count < 3 or v_ring_count > 2000 then
+        continue;
+      end if;
+
+      v_ring_vertices := array[]::geometry[];
+      v_ring_ok := true;
+
+      for v_i in 0 .. v_ring_count - 1 loop
+        v_ring_point := v_rings -> v_i;
+
+        if jsonb_typeof(v_ring_point) <> 'array'
+           or jsonb_array_length(v_ring_point) < 2 then
+          v_ring_ok := false;
+          exit;
+        end if;
+
+        if jsonb_typeof(v_ring_point -> 0) is distinct from 'number'
+           or jsonb_typeof(v_ring_point -> 1) is distinct from 'number' then
+          v_ring_ok := false;
+          exit;
+        end if;
+
+        v_ring_lon := (v_ring_point ->> 0)::double precision;
+        v_ring_lat := (v_ring_point ->> 1)::double precision;
+
+        if v_ring_lon < -180 or v_ring_lon > 180
+           or v_ring_lat < -85.0511 or v_ring_lat > 85.0511 then
+          v_ring_ok := false;
+          exit;
+        end if;
+
+        v_ring_geom := st_setsrid(st_makepoint(v_ring_lon, v_ring_lat), 4326);
+
+        -- Вершина контура должна быть на треке (допуск 5 м).
+        if not st_dwithin(v_track::geography, v_ring_geom::geography, 5) then
+          v_ring_ok := false;
+          exit;
+        end if;
+
+        v_ring_vertices := v_ring_vertices || v_ring_geom;
+      end loop;
+
+      if not v_ring_ok or coalesce(array_length(v_ring_vertices, 1), 0) < 3 then
+        continue;
+      end if;
+
+      v_ring_line := st_makeline(v_ring_vertices);
+
+      if not st_equals(st_startpoint(v_ring_line), st_endpoint(v_ring_line)) then
+        v_ring_line := st_addpoint(v_ring_line, st_startpoint(v_ring_line));
+      end if;
+
+      v_ring_geom := st_makevalid(st_makepolygon(v_ring_line));
+      v_ring_geom := st_multi(st_collectionextract(v_ring_geom, 3));
+
+      if v_ring_geom is not null and not st_isempty(v_ring_geom) then
+        v_rings_geom := case
+          when v_rings_geom is null then v_ring_geom
+          else st_union(v_rings_geom, v_ring_geom)
+        end;
+      end if;
+    end loop;
+
+    if v_rings_geom is not null then
+      v_rings_geom := st_multi(st_collectionextract(st_makevalid(v_rings_geom), 3));
+    end if;
+  end if;
+
+  if v_rings_geom is not null and not st_isempty(v_rings_geom) then
+    v_poly := v_rings_geom;
+  elsif v_count >= 3 and v_loop_dist <= v_loop_radius then
     if st_equals(v_start, v_end) then
       v_ring := v_track;
     else
@@ -476,12 +575,13 @@ begin
 
     v_poly := st_makevalid(st_makepolygon(v_ring));
     v_poly := st_multi(st_collectionextract(v_poly, 3));
+  end if;
 
-    if v_poly is not null
-       and not st_isempty(v_poly)
-       and st_area(v_poly::geography) >= v_min_area
-       and st_perimeter(v_poly::geography) >= v_min_perimeter then
-      v_claim := v_poly;
+  if v_poly is not null
+     and not st_isempty(v_poly)
+     and st_area(v_poly::geography) >= v_min_area
+     and st_perimeter(v_poly::geography) >= v_min_perimeter then
+    v_claim := v_poly;
 
       -- Территории внутри чужой домашней зоны не отдаются.
       select st_union(hz.area) into v_forbidden
@@ -677,7 +777,6 @@ begin
         end if;
       end if;
     end if;
-  end if;
 
   insert into public.season_scores as ss (
     season_id, user_id, city_id, district_id, points, distance_m, area_m2,
@@ -717,8 +816,8 @@ begin
 end;
 $$;
 
-revoke all on function public.submit_run(jsonb) from public;
-grant execute on function public.submit_run(jsonb) to authenticated;
+revoke all on function public.submit_run(jsonb, jsonb) from public;
+grant execute on function public.submit_run(jsonb, jsonb) to authenticated;
 
 -- ——— Запросы для карты и рейтинга ———
 

@@ -255,6 +255,49 @@
           </div>
         </section>
 
+        <section class="menu-section" aria-label="Онлайн">
+          <h2 class="menu-title">Онлайн</h2>
+
+          <div class="setting">
+            <div class="setting-text">
+              <span class="setting-name">Онлайн-игра</span>
+              <span class="setting-desc" id="online-status">Подключение…</span>
+            </div>
+            <button
+              id="btn-online"
+              class="switch"
+              type="button"
+              role="switch"
+              aria-checked="true"
+              aria-label="Онлайн-игра"
+            >
+              <span></span>
+            </button>
+          </div>
+
+          <div class="online-name">
+            <label class="online-label" for="online-name">Имя в рейтинге</label>
+            <div class="online-name-row">
+              <input
+                id="online-name"
+                class="online-input"
+                type="text"
+                maxlength="40"
+                autocomplete="nickname"
+                placeholder="Игрок"
+              />
+              <button id="btn-online-name" class="online-save" type="button">Сохранить</button>
+            </div>
+          </div>
+
+          <div class="online-city-row">
+            <p class="online-city" id="online-city">Город: —</p>
+            <button id="btn-online-refresh" class="online-refresh" type="button">Обновить</button>
+          </div>
+
+          <ol class="online-leaderboard" id="online-leaderboard"></ol>
+        </section>
+
         <section class="menu-section menu-section--dev" aria-label="Для разработчика">
           <h2 class="menu-title">Для разработчика</h2>
           <button id="btn-clear" class="danger-btn" type="button">Сбросить все данные</button>

@@ -17,6 +17,18 @@ import {
 import { accuracyQuality, createGpsFilter, formatAccuracy } from './gpsFilter';
 import { buildMapStyle } from './map/style';
 import { palette } from './map/palette';
+import {
+  ensureAnonymousSession,
+  fetchCityAt,
+  fetchLeaderboard,
+  fetchOnlineTerritories,
+  loadProfileName,
+  saveProfileName,
+  submitRun,
+  type CityInfo,
+  type LeaderboardRow,
+  type RunPoint,
+} from './online';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './style.css';
 
@@ -57,6 +69,7 @@ interface StoredSettings {
   buildings3d?: boolean;
   lightMap?: boolean;
   rotateByHeading?: boolean;
+  online?: boolean;
 }
 
 function readStoredSettings(): StoredSettings | null {
@@ -79,6 +92,7 @@ let buildings3d = initialSettings?.buildings3d === true;
 let lightMap =
   typeof initialSettings?.lightMap === 'boolean' ? initialSettings.lightMap : isWeakDevice();
 let rotateByHeading = initialSettings?.rotateByHeading === true;
+let onlineEnabled = initialSettings?.online !== false;
 
 function byId<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -127,6 +141,13 @@ const territoryCountEl = byId('territory-count');
 const territoryListEl = byId<HTMLUListElement>('territory-list');
 const territoryEmptyEl = byId('territory-empty');
 const clearButton = byId<HTMLButtonElement>('btn-clear');
+const onlineToggleButton = byId<HTMLButtonElement>('btn-online');
+const onlineStatusEl = byId('online-status');
+const onlineNameInput = byId<HTMLInputElement>('online-name');
+const onlineNameButton = byId<HTMLButtonElement>('btn-online-name');
+const onlineRefreshButton = byId<HTMLButtonElement>('btn-online-refresh');
+const onlineCityEl = byId('online-city');
+const onlineLeaderboardEl = byId<HTMLOListElement>('online-leaderboard');
 
 const map = new MapLibreMap({
   container: 'map',
@@ -171,6 +192,19 @@ let bestRunDistance = 0;
 
 let travelHeading = 0; // направление движения, градусы от севера
 let pitchTarget: number | null = null; // куда плавно ведём наклон камеры
+
+// ——— Онлайн-состояние ———
+
+let onlineUserId: string | null = null;
+let onlineReady = false;
+let onlineBusy = false;
+let onlineInitPromise: Promise<void> | null = null;
+let onlineFetchTimer: number | null = null;
+let onlineCityId: string | null = null;
+let runPoints: RunPoint[] = [];
+let runRings: LngLat[][] = [];
+let lastRunPointTime = 0;
+let runStartedAt = 0;
 
 // ——— Геометрия ———
 
@@ -403,15 +437,54 @@ function addOverlayLayers(): void {
     });
   }
 
+  // Территории других игроков из Supabase. Свой слой — ниже локальных,
+  // чтобы текущая игра всегда оставалась сверху.
+  if (!map.getSource('online-territories')) {
+    map.addSource('online-territories', { type: 'geojson', data: emptyCollection() });
+  }
+  const onlineBeforeId = map.getLayer('territories-fill') ? 'territories-fill' : undefined;
+  if (!map.getLayer('online-territories-fill')) {
+    map.addLayer(
+      {
+        id: 'online-territories-fill',
+        type: 'fill',
+        source: 'online-territories',
+        paint: {
+          'fill-color': palette.online.territory,
+          'fill-opacity': 0.16,
+        },
+      },
+      onlineBeforeId,
+    );
+  }
+  if (!map.getLayer('online-territories-line')) {
+    map.addLayer(
+      {
+        id: 'online-territories-line',
+        type: 'line',
+        source: 'online-territories',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: {
+          'line-color': palette.online.outline,
+          'line-width': 1.4,
+          'line-opacity': 0.55,
+        },
+      },
+      onlineBeforeId,
+    );
+  }
+
   updateTrail();
   updateRoute();
   updateTerritories();
   updateFlashSource();
   applyBuildings3D();
+  scheduleOnlineTerritories(0);
 }
 
 map.on('style.load', addOverlayLayers);
 map.on('load', addOverlayLayers);
+map.on('moveend', () => scheduleOnlineTerritories());
 
 // ——— Территории ———
 
@@ -694,7 +767,14 @@ function saveSettings(): void {
   try {
     localStorage.setItem(
       SETTINGS_KEY,
-      JSON.stringify({ units, timeScale, buildings3d, lightMap, rotateByHeading } satisfies StoredSettings),
+      JSON.stringify({
+        units,
+        timeScale,
+        buildings3d,
+        lightMap,
+        rotateByHeading,
+        online: onlineEnabled,
+      } satisfies StoredSettings),
     );
   } catch {
     // настройки просто не переживут перезагрузку
@@ -755,6 +835,10 @@ function commitCapture(ring: LngLat[]): boolean {
   renderTerritoryList();
   saveState();
   showStatus(`Территория захвачена: +${formatArea(captured.area)}`);
+
+  if (running && onlineEnabled) {
+    runRings.push(ring.map(([lon, lat]) => [lon, lat] as LngLat));
+  }
 
   // След сброшен: новый начнётся при выходе за границу уже обновлённой территории.
   trail = [];
@@ -906,6 +990,279 @@ function applyMapSettings(): void {
   rotateHeadingButton.setAttribute('aria-checked', String(rotateByHeading));
 }
 
+// ——— Онлайн ———
+
+function setOnlineStatus(text: string): void {
+  onlineStatusEl.textContent = text;
+}
+
+function setOnlineCity(city: CityInfo): void {
+  onlineCityId = city.cityId;
+
+  if (!city.cityId) {
+    onlineCityEl.textContent = 'Город: не определён — общий рейтинг';
+    return;
+  }
+
+  const district = city.districtName ? ` · ${city.districtName}` : '';
+  onlineCityEl.textContent = `Город: ${city.cityName ?? '—'}${district}`;
+}
+
+function renderOnlineLeaderboard(rows: LeaderboardRow[]): void {
+  onlineLeaderboardEl.replaceChildren();
+
+  if (rows.length === 0) {
+    const empty = document.createElement('li');
+    empty.className = 'online-empty';
+    empty.textContent = onlineEnabled
+      ? 'Пока нет результатов. Пробеги забег — и попадёшь в рейтинг.'
+      : 'Онлайн выключен.';
+    onlineLeaderboardEl.append(empty);
+    return;
+  }
+
+  for (const row of rows) {
+    const item = document.createElement('li');
+    item.className = 'online-row';
+    if (onlineUserId !== null && row.userId === onlineUserId) {
+      item.classList.add('online-row--me');
+    }
+    item.title = `${formatArea(row.areaM2)} · ${formatDistance(row.distanceM)} · забегов: ${row.runsCount}`;
+
+    const rank = document.createElement('span');
+    rank.className = 'online-rank';
+    rank.textContent = String(row.rank);
+
+    const name = document.createElement('span');
+    name.className = 'online-name-cell';
+    name.textContent = row.displayName;
+
+    const points = document.createElement('span');
+    points.className = 'online-points';
+    points.textContent = String(Math.round(row.points));
+
+    item.append(rank, name, points);
+    onlineLeaderboardEl.append(item);
+  }
+}
+
+async function refreshOnlineTerritories(): Promise<string | null> {
+  if (!onlineEnabled || !onlineReady) return null;
+
+  const source = map.getSource('online-territories') as GeoJSONSource | undefined;
+  if (!source) return null;
+
+  const bounds = map.getBounds();
+  const { data, error } = await fetchOnlineTerritories({
+    west: bounds.getWest(),
+    south: bounds.getSouth(),
+    east: bounds.getEast(),
+    north: bounds.getNorth(),
+  });
+
+  if (error) return error;
+  if (data) source.setData(data);
+  return null;
+}
+
+async function refreshLeaderboard(): Promise<string | null> {
+  if (!onlineEnabled || !onlineReady) return null;
+
+  const { rows, error } = await fetchLeaderboard(onlineCityId);
+  if (error) return error;
+
+  renderOnlineLeaderboard(rows);
+  return null;
+}
+
+function scheduleOnlineTerritories(delay = 500): void {
+  if (!onlineEnabled || !onlineReady) return;
+
+  if (onlineFetchTimer !== null) window.clearTimeout(onlineFetchTimer);
+  onlineFetchTimer = window.setTimeout(() => {
+    onlineFetchTimer = null;
+    void refreshOnlineTerritories().then((error) => {
+      if (error) console.warn('online territories:', error);
+    });
+  }, delay);
+}
+
+async function initOnline(): Promise<void> {
+  if (!onlineEnabled) return;
+  if (onlineInitPromise) return onlineInitPromise;
+
+  onlineInitPromise = (async () => {
+    onlineReady = false;
+    setOnlineStatus('Подключение к Supabase…');
+
+    const session = await ensureAnonymousSession();
+    if (!onlineEnabled) return;
+
+    if (session.error || !session.userId) {
+      setOnlineStatus(session.error ?? 'Не удалось войти в онлайн');
+      return;
+    }
+
+    onlineUserId = session.userId;
+    const name = await loadProfileName();
+    onlineNameInput.value = name;
+    // Анонимные пользователи, созданные до установки схемы, могли остаться без профиля.
+    void saveProfileName(name);
+
+    const city = await fetchCityAt(position[0], position[1]);
+    if (city) {
+      setOnlineCity(city);
+    } else {
+      onlineCityId = null;
+      onlineCityEl.textContent = 'Город: —';
+    }
+
+    onlineReady = true;
+    const [territoriesError, leaderboardError] = await Promise.all([
+      refreshOnlineTerritories(),
+      refreshLeaderboard(),
+    ]);
+
+    if (territoriesError ?? leaderboardError) {
+      setOnlineStatus(territoriesError ?? leaderboardError ?? 'Онлайн недоступен');
+    } else {
+      setOnlineStatus(`Онлайн: ${name}`);
+    }
+  })().finally(() => {
+    onlineInitPromise = null;
+  });
+
+  return onlineInitPromise;
+}
+
+function applyOnline(): void {
+  onlineToggleButton.setAttribute('aria-checked', String(onlineEnabled));
+  onlineNameInput.disabled = !onlineEnabled;
+
+  if (!onlineEnabled) {
+    onlineReady = false;
+    onlineUserId = null;
+    setOnlineStatus('Офлайн: только локальная игра');
+    onlineCityEl.textContent = 'Город: —';
+    renderOnlineLeaderboard([]);
+    const source = map.getSource('online-territories') as GeoJSONSource | undefined;
+    source?.setData(emptyCollection());
+    return;
+  }
+
+  void initOnline();
+}
+
+function refreshOnlineNow(): void {
+  if (!onlineEnabled) return;
+  if (!onlineReady) {
+    void initOnline();
+    return;
+  }
+
+  setOnlineStatus('Обновление…');
+  void Promise.all([refreshOnlineTerritories(), refreshLeaderboard()]).then(
+    ([territoriesError, leaderboardError]) => {
+      const error = territoriesError ?? leaderboardError;
+      if (error) {
+        setOnlineStatus(error);
+      } else {
+        setOnlineStatus(`Онлайн: ${onlineNameInput.value.trim() || 'Игрок'}`);
+      }
+    },
+  );
+}
+
+function pushRunPoint(lon: number, lat: number, t: number, accuracy: number): void {
+  if (!running || !onlineEnabled || !onlineReady) return;
+  if (!Number.isFinite(lon) || !Number.isFinite(lat) || !Number.isFinite(t)) return;
+  if (t <= lastRunPointTime) return;
+  if (runPoints.length >= 10_000) return;
+
+  runPoints.push({ lon, lat, t, accuracy });
+  lastRunPointTime = t;
+}
+
+function rejectionText(reason: string | undefined): string {
+  switch (reason) {
+    case 'speed':
+      return 'скорость выше 7 м/с';
+    case 'accuracy':
+      return 'точность GPS хуже 25 м';
+    case 'accuracy_missing':
+      return 'нет данных о точности GPS';
+    case 'jump':
+      return 'нереальный скачок координат';
+    case 'timestamps':
+      return 'нарушен порядок времени';
+    case 'too_many_points':
+      return 'слишком много точек';
+    default:
+      return 'трек не прошёл проверку';
+  }
+}
+
+async function submitOnlineRun(points: RunPoint[], rings: LngLat[][]): Promise<void> {
+  if (!onlineEnabled || !onlineReady || onlineBusy) return;
+
+  onlineBusy = true;
+  setOnlineStatus('Отправка забега…');
+
+  const { result, error } = await submitRun(
+    points,
+    rings.map((ring) => ring.map(([lon, lat]) => [lon, lat] as [number, number])),
+  );
+  onlineBusy = false;
+
+  if (error) {
+    setOnlineStatus(error);
+    showStatus(`Онлайн: ${error}`);
+    return;
+  }
+  if (!result) return;
+
+  if (result.status === 'rejected') {
+    const message = rejectionText(result.reason);
+    setOnlineStatus(`Забег не засчитан: ${message}`);
+    showStatus(`Онлайн: ${message}`);
+    return;
+  }
+
+  if (result.cityId) {
+    const origin = points[0];
+    const city = await fetchCityAt(origin.lon, origin.lat);
+    if (city) setOnlineCity(city);
+  }
+
+  const pointsText = result.pointsAwarded ?? 0;
+  setOnlineStatus(`Онлайн: +${pointsText} очков`);
+  showStatus(`Онлайн: +${pointsText} очков, ${formatArea(result.areaM2 ?? 0)}`);
+  scheduleOnlineTerritories(0);
+  void refreshLeaderboard();
+}
+
+async function saveOnlineName(): Promise<void> {
+  if (!onlineEnabled) {
+    setOnlineStatus('Онлайн выключен');
+    return;
+  }
+  if (!onlineReady) {
+    setOnlineStatus('Сначала дождись подключения к онлайн');
+    return;
+  }
+
+  const error = await saveProfileName(onlineNameInput.value);
+  if (error) {
+    setOnlineStatus(error);
+    return;
+  }
+
+  const name = onlineNameInput.value.trim() || 'Игрок';
+  onlineNameInput.value = name;
+  setOnlineStatus(`Онлайн: ${name}`);
+  void refreshLeaderboard();
+}
+
 // ——— Меню ———
 
 function openMenu(): void {
@@ -1045,8 +1402,13 @@ function startRun(): void {
   bonusAnchorDistance = 0;
   runTime = 0;
   currentSpeed = 0;
+  runPoints = [];
+  runRings = [];
+  lastRunPointTime = 0;
+  runStartedAt = Date.now();
   if (!hintCardEl.hidden) dismissFirstRunHint();
   setRunning(true);
+  if (!geoActive) pushRunPoint(position[0], position[1], runStartedAt, 5);
   renderHud();
   renderScore();
 }
@@ -1062,6 +1424,16 @@ function stopRun(): void {
       }
     : null;
 
+  // Последняя точка симуляции: GPS уже присылает свои точки с точностью.
+  if (!geoActive) {
+    pushRunPoint(position[0], position[1], runStartedAt + runTime * 1000, 5);
+  }
+  const points = runPoints;
+  const rings = runRings;
+  runPoints = [];
+  runRings = [];
+  lastRunPointTime = 0;
+
   runSnapshot = null;
   setRunning(false);
   renderHud();
@@ -1073,6 +1445,7 @@ function stopRun(): void {
     renderMenuStats();
   }
   if (summary.distance >= 1) showRunSummary(summary);
+  if (summary.distance >= 10 && points.length >= 2) void submitOnlineRun(points, rings);
 }
 
 runButton.addEventListener('click', () => {
@@ -1266,6 +1639,7 @@ function handlePosition(reading: GeolocationPosition): void {
     if (running) {
       distance += result.stepMeters;
       advanceTrail(previous, point);
+      pushRunPoint(point[0], point[1], reading.timestamp, reading.coords.accuracy);
       if (result.speedMps > 0) currentSpeed = currentSpeed * 0.6 + result.speedMps * 0.4;
     }
     return;
@@ -1365,6 +1739,18 @@ rotateHeadingButton.addEventListener('click', () => {
   saveSettings();
 });
 
+onlineToggleButton.addEventListener('click', () => {
+  onlineEnabled = !onlineEnabled;
+  applyOnline();
+  saveSettings();
+});
+
+onlineNameButton.addEventListener('click', () => {
+  void saveOnlineName();
+});
+
+onlineRefreshButton.addEventListener('click', refreshOnlineNow);
+
 clearButton.addEventListener('click', () => {
   const confirmed = window.confirm(
     'Сбросить все данные? Территории, очки и рекорд будут удалены без возможности вернуть.',
@@ -1381,6 +1767,9 @@ clearButton.addEventListener('click', () => {
   geoFilter.reset();
   geoCentered = false;
   bestRunDistance = 0;
+  runPoints = [];
+  runRings = [];
+  lastRunPointTime = 0;
 
   clearTerritories(); // обнуляет и очки, и bonusAnchorDistance
   updateTrail();
@@ -1443,6 +1832,9 @@ function tick(now: number): void {
       if (now - lastGeoFix > GEO_STALE_MS) currentSpeed = 0;
     } else {
       simulate(dt);
+      if (runStartedAt + runTime * 1000 - lastRunPointTime >= 1000) {
+        pushRunPoint(position[0], position[1], runStartedAt + runTime * 1000, 5);
+      }
     }
   }
 
@@ -1470,6 +1862,7 @@ applyUnits();
 applyTimeScale();
 applyGeoSwitch();
 applyMapSettings();
+applyOnline();
 renderGpsOff();
 renderBuildInfo();
 setupFirstRunHint();
