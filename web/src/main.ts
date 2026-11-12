@@ -684,7 +684,7 @@ function saveSettings(): void {
   try {
     localStorage.setItem(
       SETTINGS_KEY,
-      JSON.stringify({ units, timeScale, buildings3d, lightMap } satisfies StoredSettings),
+      JSON.stringify({ units, timeScale, buildings3d, lightMap, rotateByHeading } satisfies StoredSettings),
     );
   } catch {
     // настройки просто не переживут перезагрузку
@@ -893,6 +893,7 @@ function applyGeoSwitch(): void {
 function applyMapSettings(): void {
   buildings3dButton.setAttribute('aria-checked', String(buildings3d));
   lightMapButton.setAttribute('aria-checked', String(lightMap));
+  rotateHeadingButton.setAttribute('aria-checked', String(rotateByHeading));
 }
 
 // ——— Меню ———
@@ -1013,6 +1014,8 @@ function setRunning(value: boolean): void {
   running = value;
   runButton.textContent = running ? 'Стоп бега' : 'Старт бега';
   runButton.classList.toggle('running', running);
+  // В беге камера наклоняется сильнее, вне бега возвращается к обзорному наклону.
+  pitchTarget = running ? RUN_PITCH : DEFAULT_PITCH;
   if (running) {
     // Первые замеры после старта GPS ещё прогревается — фильтр их пропустит.
     geoFilter.reset();
@@ -1074,10 +1077,10 @@ function placePlayer(next: LngLat): void {
   playerMarker.setLngLat(next);
 }
 
-function movePlayerTo(next: LngLat): void {
+function movePlayerTo(next: LngLat, forceHeading = false): void {
   const previous = position;
   placePlayer(next);
-  if (distanceMeters(previous, next) >= HEADING_MIN_STEP) {
+  if (forceHeading || distanceMeters(previous, next) >= HEADING_MIN_STEP) {
     travelHeading = headingBetween(previous, next);
   }
 }
@@ -1345,6 +1348,12 @@ lightMapButton.addEventListener('click', () => {
   map.setStyle(buildMapStyle({ light: lightMap }), { diff: false });
 });
 
+rotateHeadingButton.addEventListener('click', () => {
+  rotateByHeading = !rotateByHeading;
+  applyMapSettings();
+  saveSettings();
+});
+
 clearButton.addEventListener('click', () => {
   const confirmed = window.confirm(
     'Сбросить все данные? Территории, очки и рекорд будут удалены без возможности вернуть.',
@@ -1427,6 +1436,7 @@ function tick(now: number): void {
   }
 
   updateFlash(now);
+  updateCamera(dt);
   renderHud();
   requestAnimationFrame(tick);
 }

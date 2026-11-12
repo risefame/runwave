@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-12T16:32:29.377Z",
+  "generatedAt": "2026-11-12T18:55:53.261Z",
   "root": ".",
   "parserVersion": 2,
   "graphVersion": 1,
@@ -77,9 +77,9 @@
       "lastProcessed": "2026-11-12T11:53:36.602Z"
     },
     "web/src/main.ts": {
-      "hash": "28cd966846956999efb0a05c3be9264a091e9e96b739ad5ee4f8fcac4663e8d3",
-      "size": 41732,
-      "mtimeMs": 1794499760541.4646,
+      "hash": "fe65fc9bf9c46ca1c8b2f18c4aef15c40027c2c5534b8ddfa2a9c494479c7def",
+      "size": 45455,
+      "mtimeMs": 1794509044410.3086,
       "language": "typescript",
       "symbols": [],
       "imports": [
@@ -93,12 +93,12 @@
       ],
       "exports": [],
       "summary": "Module file: web/src/main.ts",
-      "lastProcessed": "2026-11-12T16:09:50.751Z"
+      "lastProcessed": "2026-11-12T18:55:53.260Z"
     },
     "web/src/map/palette.ts": {
-      "hash": "5c5438855ce20f4a6bc697b98f67318fc69309eace7e0c1222b227c6a7a92f0b",
-      "size": 1343,
-      "mtimeMs": 1794499369447.6633,
+      "hash": "45e5eae2d5e8961cd164e1ffc389673780f27662510d66a2f22ba80f6211de50",
+      "size": 1634,
+      "mtimeMs": 1794501826801.2258,
       "language": "typescript",
       "symbols": [
         "palette"
@@ -108,7 +108,7 @@
         "palette"
       ],
       "summary": "Defines palette.",
-      "lastProcessed": "2026-11-12T16:06:55.717Z"
+      "lastProcessed": "2026-11-12T18:55:53.260Z"
     },
     "web/src/map/style.json": {
       "hash": "c90dbfd0e428f7ea40740c29e789167c24f79e91327761960e08c44ca8f7795e",
@@ -122,9 +122,9 @@
       "lastProcessed": "2026-11-12T16:06:55.717Z"
     },
     "web/src/map/style.ts": {
-      "hash": "c5da36cb115a4e0bd29d83e4449b57e00f937d8414a93c02fc343edd440b8802",
-      "size": 8359,
-      "mtimeMs": 1794499212839.0586,
+      "hash": "d529abd2545f1298ee51c3e9a0b1ce3091dbac4b10a296c3cffcecdf0446a841",
+      "size": 14772,
+      "mtimeMs": 1794501774743.4336,
       "language": "typescript",
       "symbols": [
         "buildMapStyle"
@@ -138,7 +138,7 @@
         "buildMapStyle"
       ],
       "summary": "Defines buildMapStyle.",
-      "lastProcessed": "2026-11-12T16:06:55.717Z"
+      "lastProcessed": "2026-11-12T18:55:53.260Z"
     },
     "web/src/territory.test.ts": {
       "hash": "827fa57aac5a01cd439482b0595a0b5e61b1ce982ce5b65c2615d8c99b309121",
