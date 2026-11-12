@@ -235,8 +235,15 @@ function applyBuildings3D(): void {
 
   if (existing || !map.getLayer('building')) return;
 
-  // Слой домов вставляем под территории и след, чтобы игра всегда была сверху.
-  const beforeId = map.getLayer('territories-fill') ? 'territories-fill' : undefined;
+  // Объёмные дома ставим над дорогами, но под подписями, POI и игровыми слоями:
+  // иначе крыши перекрывают номера домов и значки.
+  const beforeId = map.getLayer('poi-runner-dot')
+    ? 'poi-runner-dot'
+    : map.getLayer('highway_name_other')
+      ? 'highway_name_other'
+      : map.getLayer('territories-fill')
+        ? 'territories-fill'
+        : undefined;
   map.addLayer(
     {
       id: BUILDINGS_3D_LAYER_ID,
@@ -247,23 +254,26 @@ function applyBuildings3D(): void {
       filter: ['match', ['geometry-type'], ['MultiPolygon', 'Polygon'], true, false],
       paint: {
         // Низкие дома темнее, высокие светлее — масса домов читается как объём.
-        'fill-extrusion-color': [
-          'interpolate',
-          ['linear'],
-          ['coalesce', ['get', 'render_height'], 0],
-          0,
-          palette.building.fill,
-          10,
-          palette.building.extrusion,
-          40,
-          palette.building.extrusionTop,
-          90,
-          palette.building.extrusionHigh,
-        ],
-        'fill-extrusion-vertical-gradient': true,
+        // В лёгкой карте — плоский цвет без градиента, чтобы не грузить слабые телефоны.
+        'fill-extrusion-color': lightMap
+          ? palette.building.extrusion
+          : [
+              'interpolate',
+              ['linear'],
+              ['coalesce', ['get', 'render_height'], 8],
+              0,
+              palette.building.fill,
+              8,
+              palette.building.extrusion,
+              20,
+              palette.building.extrusionTop,
+              50,
+              palette.building.extrusionHigh,
+            ],
+        'fill-extrusion-vertical-gradient': !lightMap,
         'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 8],
         'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
-        'fill-extrusion-opacity': 0.9,
+        'fill-extrusion-opacity': lightMap ? 0.85 : 0.95,
       },
     },
     beforeId,
@@ -1174,7 +1184,8 @@ function dropWaypoint(): void {
 
 function registerMove(next: LngLat, meters: number): void {
   const previous = position;
-  movePlayerTo(next);
+  // Шаг симуляции меньше порога 2 м, поэтому направление обновляем принудительно.
+  movePlayerTo(next, true);
   if (!running) return;
 
   distance += meters;

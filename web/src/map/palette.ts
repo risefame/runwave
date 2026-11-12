@@ -9,11 +9,11 @@ export const palette = {
   waterway: '#0c2138',
 
   land: {
-    residential: '#090c0b',
-    park: '#0a1612',
-    grass: '#0b1714',
-    pitch: '#0a1411',
-    wood: '#081310',
+    residential: '#0a0f0d',
+    park: '#0c1a13',
+    grass: '#0d1d16',
+    pitch: '#0b1912',
+    wood: '#091610',
     ice: '#0a0d12',
     glacier: '#0a0d12',
     aeroway: '#0d1014',
@@ -22,23 +22,23 @@ export const palette = {
 
   building: {
     /** Стены: чуть светлее фона, но темнее крыш. */
-    fill: '#090b0f',
+    fill: '#0b0f14',
     /** Крыши и подсветка контура. */
-    roof: '#0f1319',
-    outline: 'rgba(150, 190, 215, 0.14)',
-    extrusion: '#0b0f14',
-    extrusionTop: '#18202a',
-    extrusionHigh: '#222b37',
+    roof: '#11161e',
+    outline: 'rgba(150, 190, 215, 0.22)',
+    extrusion: '#0d1319',
+    extrusionTop: '#16202a',
+    extrusionHigh: '#202b38',
   },
 
   road: {
-    path: '#2a313c',
-    minor: '#16191f',
-    minorOpacity: 0.85,
-    major: '#232830',
-    majorSubtle: '#1b2027',
+    path: '#3a4553',
+    minor: '#1a1f26',
+    minorOpacity: 0.9,
+    major: '#272e38',
+    majorSubtle: '#1e242c',
     majorCasing: '#0b0d10',
-    motorway: '#2b313a',
+    motorway: '#303844',
     motorwayCasing: '#0b0d10',
     rail: '#1a1e25',
     railDash: '#0a0c10',
@@ -52,16 +52,24 @@ export const palette = {
   },
 
   label: {
-    color: '#7d8695',
+    color: '#818b99',
     halo: '#04060a',
     water: '#4d6d8a',
-    road: '#9aa4b1',
-    motorway: '#aab4c1',
-    city: '#b3bdcb',
-    suburb: '#96a1b0',
-    state: '#7c8695',
-    country: '#8b95a3',
-    housenumber: '#57616d',
+    road: '#a6b1bf',
+    motorway: '#b4bfca',
+    city: '#c2ccd8',
+    suburb: '#a3aebc',
+    state: '#848e9c',
+    country: '#919ba9',
+    housenumber: '#5f6a77',
+  },
+
+  /** Точечные маркеры POI, для которых нет подходящего значка в спрайте. */
+  poi: {
+    transit: '#5b9bd5',
+    water: '#4b9fbd',
+    sport: '#5aa377',
+    facility: '#8d97a6',
   },
 
   overlay: {

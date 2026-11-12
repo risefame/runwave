@@ -31,19 +31,21 @@ const MAJOR_ROADS = ['primary', 'secondary', 'tertiary', 'trunk'];
 /** Пешеходные и беговые пути: в данных OpenMapTiles это подклассы class=path. */
 const PEDESTRIAN_SUBCLASSES = ['footway', 'pedestrian', 'cycleway', 'steps', 'path', 'corridor'];
 
-/** Значки, полезные бегуну: остановки, вода, спортплощадки, туалеты. */
-const RUNNER_POI_CLASSES = [
+/** Классы POI, для которых в спрайте OpenFreeMap есть подходящий значок. */
+const RUNNER_POI_ICON_CLASSES = [
   'bus',
   'drinking_water',
   'water',
   'toilets',
   'pitch',
   'playground',
-  'sports_centre',
   'stadium',
   'swimming',
   'soccer',
 ];
+
+/** Классы POI без значка в спрайте: рисуем маленькие кружки по категории. */
+const RUNNER_POI_DOT_CLASSES = ['sports_centre', 'fitness_centre', 'fountain'];
 
 /** Служебные и мелкие подписи, которые не нужны на игровой карте. */
 const ALWAYS_HIDDEN = new Set(['road_oneway', 'road_oneway_opposite', 'place_other']);
@@ -122,7 +124,7 @@ function grassLayer(): RawLayer {
     filter: ['all', polygonMatch(), ['match', ['get', 'class'], ['grass'], true, false]],
     paint: {
       'fill-color': palette.land.grass,
-      'fill-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.35, 15, 0.6, 18, 0.7],
+      'fill-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.45, 15, 0.7, 18, 0.8],
     },
   };
 }
@@ -138,11 +140,26 @@ function landuseGreenLayer(): RawLayer {
     filter: [
       'all',
       polygonMatch(),
-      ['match', ['get', 'class'], ['pitch', 'playground', 'stadium', 'track', 'garden', 'park'], true, false],
+      [
+        'match',
+        ['get', 'class'],
+        [
+          'pitch',
+          'playground',
+          'stadium',
+          'track',
+          'garden',
+          'recreation_ground',
+          'village_green',
+          'meadow',
+        ],
+        true,
+        false,
+      ],
     ],
     paint: {
       'fill-color': palette.land.pitch,
-      'fill-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.4, 16, 0.55],
+      'fill-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.45, 16, 0.65],
     },
   };
 }
@@ -158,29 +175,29 @@ function houseNumberLayer(): RawLayer {
     layout: {
       'text-field': ['get', 'housenumber'],
       'text-font': ['Noto Sans Regular'],
-      'text-size': ['interpolate', ['linear'], ['zoom'], 17, 9, 20, 11],
+      'text-size': ['interpolate', ['linear'], ['zoom'], 17, 9.5, 20, 11],
       'text-max-width': 5,
       'text-padding': 2,
     },
     paint: {
       'text-color': palette.label.housenumber,
       'text-halo-color': palette.label.halo,
-      'text-halo-width': 1,
+      'text-halo-width': 1.1,
       'text-halo-blur': 0.3,
-      'text-opacity': 0.9,
+      'text-opacity': 0.85,
     },
   };
 }
 
-/** Только самые полезные для бегуна значки, из спрайта OpenFreeMap. */
-function poiLayer(): RawLayer {
+/** Полезные бегуну значки из спрайта OpenFreeMap: остановки, вода, туалеты, спорт. */
+function poiIconLayer(): RawLayer {
   return {
     id: 'poi-runner',
     type: 'symbol',
     source: 'openmaptiles',
     'source-layer': 'poi',
     minzoom: 16,
-    filter: ['all', pointMatch(), ['match', ['get', 'class'], RUNNER_POI_CLASSES, true, false]],
+    filter: ['all', pointMatch(), ['match', ['get', 'class'], RUNNER_POI_ICON_CLASSES, true, false]],
     layout: {
       'icon-image': [
         'match',
@@ -197,22 +214,47 @@ function poiLayer(): RawLayer {
         'pitch',
         'playground',
         'playground',
-        'sports_centre',
-        'pitch',
         'stadium',
-        'pitch',
+        'stadium',
         'swimming',
         'swimming',
         'soccer',
         'soccer',
-        'circle-stroked',
+        'circle',
       ],
-      'icon-size': ['interpolate', ['linear'], ['zoom'], 16, 0.4, 19, 0.6],
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 16, 0.42, 19, 0.6],
       'icon-padding': 3,
       'symbol-sort-key': ['coalesce', ['get', 'rank'], 99],
     },
     paint: {
-      'icon-opacity': 0.6,
+      'icon-opacity': 0.65,
+    },
+  };
+}
+
+/** Фолбэк для POI без значка в спрайте: маленькие приглушённые кружки. */
+function poiDotLayer(): RawLayer {
+  return {
+    id: 'poi-runner-dot',
+    type: 'circle',
+    source: 'openmaptiles',
+    'source-layer': 'poi',
+    minzoom: 16,
+    filter: ['all', pointMatch(), ['match', ['get', 'class'], RUNNER_POI_DOT_CLASSES, true, false]],
+    paint: {
+      'circle-color': [
+        'match',
+        ['get', 'class'],
+        ['sports_centre', 'fitness_centre'],
+        palette.poi.sport,
+        'fountain',
+        palette.poi.water,
+        palette.poi.facility,
+      ],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 16, 2, 19, 3.2],
+      'circle-opacity': 0.55,
+      'circle-stroke-color': palette.label.halo,
+      'circle-stroke-width': 0.6,
     },
   };
 }
@@ -252,11 +294,11 @@ function tuneLayer(layer: RawLayer, light: boolean): void {
 
     case 'landcover_wood':
       if (layer.paint) delete layer.paint['fill-pattern'];
-      setPaint(layer, { 'fill-color': palette.land.wood, 'fill-opacity': 0.75 });
+      setPaint(layer, { 'fill-color': palette.land.wood, 'fill-opacity': 0.8 });
       break;
 
     case 'landuse_park':
-      setPaint(layer, { 'fill-color': palette.land.park, 'fill-opacity': 0.8 });
+      setPaint(layer, { 'fill-color': palette.land.park, 'fill-opacity': 0.85 });
       break;
 
     case 'waterway':
@@ -314,9 +356,9 @@ function tuneLayer(layer: RawLayer, light: boolean): void {
       setLayout(layer, { 'line-cap': 'round', 'line-join': 'round' });
       setPaint(layer, {
         'line-color': palette.road.path,
-        'line-opacity': 0.85,
-        'line-dasharray': [2, 2],
-        'line-width': ['interpolate', ['linear'], ['zoom'], 15, 0.9, 18, 1.6, 20, 2.4],
+        'line-opacity': 0.95,
+        'line-dasharray': [1.4, 2],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 15, 1.1, 17, 1.5, 18, 1.9, 20, 2.6],
       });
       break;
 
@@ -391,8 +433,12 @@ function tuneLayer(layer: RawLayer, light: boolean): void {
         ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
         ['match', ['get', 'class'], MAJOR_ROADS, true, false],
       ];
-      setLayout(layer, { 'text-transform': 'none', 'symbol-spacing': 300 });
-      tuneLabel(layer, palette.label.road, 11, 'Noto Sans Regular', 1.5);
+      setLayout(layer, {
+        'text-transform': 'none',
+        'symbol-spacing': 300,
+        'text-size': ['interpolate', ['linear'], ['zoom'], 10, 10.5, 14, 11.5, 18, 12.5],
+      });
+      tuneLabel(layer, palette.label.road, undefined, 'Noto Sans Regular', 1.6);
       break;
 
     case 'highway_name_motorway':
@@ -409,7 +455,7 @@ function tuneLayer(layer: RawLayer, light: boolean): void {
       setPaint(layer, {
         'text-color': palette.label.motorway,
         'text-halo-color': palette.label.halo,
-        'text-halo-width': 1.5,
+        'text-halo-width': 1.6,
         'text-halo-blur': 0,
       });
       break;
@@ -420,48 +466,52 @@ function tuneLayer(layer: RawLayer, light: boolean): void {
       tuneLabel(
         layer,
         palette.label.suburb,
-        ['interpolate', ['linear'], ['zoom'], 11, 11, 14, 13],
+        ['interpolate', ['linear'], ['zoom'], 11, 11.5, 14, 13.5],
         'Noto Sans Bold',
-        1.6,
+        2,
       );
       break;
 
     case 'place_village':
     case 'place_town':
       setLayout(layer, { 'text-transform': 'none' });
-      tuneLabel(layer, palette.label.color, 11, 'Noto Sans Bold', 1.5);
+      tuneLabel(layer, palette.label.color, 11, 'Noto Sans Bold', 1.6);
       break;
 
     case 'place_city':
+      // Города остаются подписанными и на 14–15 зуме, когда район уже читается.
+      layer.maxzoom = 15;
       setLayout(layer, { 'text-transform': 'none' });
       tuneLabel(
         layer,
         palette.label.city,
-        ['interpolate', ['linear'], ['zoom'], 7, 11.5, 12, 14],
+        ['interpolate', ['linear'], ['zoom'], 7, 12, 12, 14.5],
         'Noto Sans Bold',
-        1.8,
+        2,
       );
       break;
 
     case 'place_city_large':
+      // Крупные города не пропадают на 14–15 зуме — там ещё нужен ориентир.
+      layer.maxzoom = 15;
       setLayout(layer, { 'text-transform': 'none' });
       tuneLabel(
         layer,
         palette.label.city,
-        ['interpolate', ['linear'], ['zoom'], 2, 12.5, 6, 15, 11, 18],
+        ['interpolate', ['linear'], ['zoom'], 2, 13, 6, 16, 11, 19],
         'Noto Sans Bold',
-        1.8,
+        2,
       );
       break;
 
     case 'place_state':
-      tuneLabel(layer, palette.label.state, 11.5, 'Noto Sans Bold', 1.6);
+      tuneLabel(layer, palette.label.state, 11.5, 'Noto Sans Bold', 1.8);
       break;
 
     case 'place_country_other':
     case 'place_country_minor':
     case 'place_country_major':
-      tuneLabel(layer, palette.label.country, undefined, 'Noto Sans Bold', 1.6);
+      tuneLabel(layer, palette.label.country, undefined, 'Noto Sans Bold', 1.8);
       break;
   }
 }
@@ -486,8 +536,9 @@ export function buildMapStyle({ light = false }: MapStyleOptions = {}): StyleSpe
   if (!light) {
     insertBefore(layers, 'waterway', grassLayer());
     insertBefore(layers, 'waterway', landuseGreenLayer());
+    insertBefore(layers, 'highway_name_other', poiDotLayer());
+    insertBefore(layers, 'highway_name_other', poiIconLayer());
     insertBefore(layers, 'highway_name_other', houseNumberLayer());
-    insertBefore(layers, 'highway_name_other', poiLayer());
   }
 
   return {
