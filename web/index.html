@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#06080d" />
+    <title>Runwave — веб-прототип</title>
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <div class="hud">
+      <section class="stats" aria-label="Показатели пробежки">
+        <div class="stat">
+          <span class="stat-label">Дистанция</span>
+          <span class="stat-value" id="distance">0 м</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Время</span>
+          <span class="stat-value" id="time">00:00</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Скорость</span>
+          <span class="stat-value"><span id="speed">0.0</span><small>км/ч</small></span>
+        </div>
+        <div class="stat" id="gps-stat" hidden>
+          <span class="stat-label">GPS</span>
+          <span class="stat-value" id="gps-accuracy">…</span>
+        </div>
+      </section>
+
+      <div class="sidebar">
+        <section class="scoreboard" aria-label="Очки">
+          <div class="scoreboard-head">
+            <span class="scoreboard-label">Очки</span>
+            <span class="scoreboard-value" id="score">0</span>
+          </div>
+          <div class="scoreboard-breakdown">
+            <span>Площадь<b id="score-area">0</b></span>
+            <span>Дистанция<b id="score-distance">0</b></span>
+          </div>
+        </section>
+
+        <section class="territories" aria-label="Захваченные территории">
+          <header class="territories-head">
+            <h2>Территории<span class="territory-count" id="territory-count">0</span></h2>
+            <button id="btn-clear" class="btn btn-ghost" type="button">Очистить</button>
+          </header>
+          <ul class="territory-list" id="territory-list"></ul>
+          <p class="territory-empty" id="territory-empty">
+            Замкните след: вернитесь к старту или пересеките свой след — от 500 м²
+          </p>
+        </section>
+      </div>
+
+      <div class="hint" id="hint">Кликните по карте — точка маршрута</div>
+
+      <div class="controls">
+        <button id="btn-run" class="btn btn-primary" type="button">Старт бега</button>
+        <button id="btn-reset" class="btn" type="button">Сбросить</button>
+        <button id="btn-timescale" class="btn btn-toggle" type="button" aria-pressed="false">×10</button>
+        <button id="btn-geo" class="btn btn-toggle" type="button" aria-pressed="false">Реальная геолокация</button>
+      </div>
+
+      <div class="attribution">
+        © <a href="https://openfreemap.org" target="_blank" rel="noreferrer">OpenFreeMap</a> ·
+        © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>
+      </div>
+
+      <div class="status" id="status" role="status"></div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

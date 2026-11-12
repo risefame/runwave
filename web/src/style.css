@@ -1,0 +1,566 @@
+:root {
+  --neon: #22e6ff;
+  --violet: #9a7bff;
+  --bg: #06080d;
+  --panel: rgba(10, 16, 24, 0.62);
+  --border: rgba(130, 230, 255, 0.18);
+  --text: #eaf6ff;
+  --muted: rgba(178, 214, 235, 0.62);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#map {
+  position: fixed;
+  inset: 0;
+}
+
+/* ——— HUD ——— */
+
+.hud {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.stats {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  display: flex;
+  gap: 24px;
+  padding: 14px 20px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 16px 44px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 78px;
+}
+
+.stat-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #f2fbff;
+  text-shadow: 0 0 18px rgba(34, 230, 255, 0.35);
+}
+
+.stat[hidden] {
+  display: none;
+}
+
+.stat-value small {
+  margin-left: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* ——— Индикатор точности GPS ——— */
+
+#gps-accuracy {
+  white-space: nowrap;
+}
+
+#gps-accuracy.gps-good {
+  color: #7dffc4;
+  text-shadow: 0 0 18px rgba(125, 255, 196, 0.45);
+}
+
+#gps-accuracy.gps-fair {
+  color: #ffd76a;
+  text-shadow: 0 0 18px rgba(255, 215, 106, 0.4);
+}
+
+#gps-accuracy.gps-poor {
+  color: #ff7d92;
+  text-shadow: 0 0 18px rgba(255, 125, 146, 0.45);
+}
+
+/* ——— Очки и территории ——— */
+
+.sidebar {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 268px;
+  max-height: calc(100% - 160px);
+  pointer-events: none;
+}
+
+.scoreboard,
+.territories {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 16px 44px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  pointer-events: auto;
+}
+
+.scoreboard {
+  padding: 14px 18px 12px;
+  background:
+    radial-gradient(circle at 88% 0%, rgba(34, 230, 255, 0.18), transparent 62%),
+    var(--panel);
+}
+
+.scoreboard-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.scoreboard-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.scoreboard-value {
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #eafeff;
+  text-shadow: 0 0 20px rgba(34, 230, 255, 0.55);
+}
+
+.scoreboard-breakdown {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.scoreboard-breakdown b {
+  margin-left: 4px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #c9f4ff;
+}
+
+.territories {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px 8px 12px 16px;
+}
+
+.territories-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-right: 8px;
+}
+
+.territories-head h2 {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.territory-count {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border: 1px solid rgba(34, 230, 255, 0.35);
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0;
+  color: #bff6ff;
+}
+
+.btn-ghost {
+  padding: 5px 10px;
+  border-color: rgba(255, 255, 255, 0.12);
+  font-size: 11px;
+}
+
+.territory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  margin: 8px 8px 0 0;
+  padding: 0 2px 0 0;
+  list-style: none;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(34, 230, 255, 0.25) transparent;
+}
+
+.territory-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.territory-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(34, 230, 255, 0.25);
+}
+
+.territory-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(34, 230, 255, 0.14);
+  border-radius: 12px;
+  background: rgba(34, 230, 255, 0.06);
+}
+
+.territory-index {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  background: rgba(34, 230, 255, 0.16);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #bff6ff;
+}
+
+.territory-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.territory-area {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #eafeff;
+}
+
+.territory-perimeter {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.territory-empty {
+  margin: 10px 8px 2px 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.territory-label {
+  padding: 2px 7px;
+  border: 1px solid rgba(34, 230, 255, 0.45);
+  border-radius: 8px;
+  background: rgba(5, 16, 24, 0.72);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  color: #d8fbff;
+  box-shadow: 0 0 14px rgba(34, 230, 255, 0.35);
+}
+
+/* Территория на экране меньше метки — места для подписи нет. */
+.territory-label--hidden {
+  visibility: hidden;
+}
+
+.hint {
+  position: absolute;
+  left: 50%;
+  bottom: 86px;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: rgba(190, 218, 232, 0.62);
+  text-shadow: 0 1px 6px #000;
+  white-space: nowrap;
+}
+
+.controls {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 16px 44px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  pointer-events: auto;
+}
+
+.btn {
+  appearance: none;
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #d8ecf7;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--neon);
+  outline-offset: 2px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #00d5ff, #7b6bff);
+  color: #031019;
+  box-shadow: 0 0 22px rgba(34, 230, 255, 0.35);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #3ee2ff, #9184ff);
+  color: #031019;
+}
+
+.btn-primary.running {
+  background: linear-gradient(135deg, #ff5d8f, #ff9a5d);
+  box-shadow: 0 0 22px rgba(255, 93, 143, 0.35);
+}
+
+.btn-toggle.active {
+  border-color: rgba(34, 230, 255, 0.6);
+  background: rgba(34, 230, 255, 0.14);
+  color: #bff6ff;
+  box-shadow: inset 0 0 16px rgba(34, 230, 255, 0.25);
+}
+
+.attribution {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(6, 10, 16, 0.5);
+  color: rgba(190, 218, 232, 0.55);
+  font-size: 11px;
+  pointer-events: auto;
+}
+
+.attribution a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted rgba(190, 218, 232, 0.35);
+}
+
+.attribution a:hover {
+  color: #bff4ff;
+}
+
+.status {
+  position: absolute;
+  top: 22px;
+  left: 50%;
+  max-width: 80vw;
+  padding: 8px 14px;
+  transform: translateX(-50%) translateY(-8px);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(10, 16, 24, 0.88);
+  font-size: 13px;
+  opacity: 0;
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+
+.status.visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+/* ——— Маркеры карты ——— */
+
+.player {
+  position: relative;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.player-dot {
+  position: absolute;
+  top: -7px;
+  left: -7px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #eaffff;
+  box-shadow:
+    0 0 10px #00e5ff,
+    0 0 24px #00e5ff,
+    0 0 48px rgba(0, 229, 255, 0.8);
+}
+
+.player-halo {
+  position: absolute;
+  top: -27px;
+  left: -27px;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 229, 255, 0.45), rgba(0, 229, 255, 0) 70%);
+  animation: player-pulse 2s ease-out infinite;
+}
+
+@keyframes player-pulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.waypoint {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(122, 255, 240, 0.9);
+  border-radius: 50%;
+  background: rgba(0, 229, 255, 0.25);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.7);
+  pointer-events: none;
+}
+
+@media (max-width: 720px) {
+  .stats {
+    top: 12px;
+    right: 12px;
+    left: 12px;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+  }
+
+  .stat {
+    min-width: 0;
+  }
+
+  .stat-value {
+    font-size: 18px;
+  }
+
+  .hint {
+    display: none;
+  }
+
+  .controls {
+    bottom: 12px;
+    width: calc(100% - 24px);
+    gap: 6px;
+    padding: 6px;
+    border-radius: 22px;
+  }
+
+  .btn {
+    flex: 1 1 auto;
+    padding: 10px 12px;
+    font-size: 12px;
+    text-align: center;
+  }
+
+  .attribution {
+    right: 10px;
+    bottom: 82px;
+  }
+
+  .sidebar {
+    top: 78px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: 42vh;
+  }
+
+  .scoreboard {
+    padding: 10px 14px;
+  }
+
+  .scoreboard-value {
+    font-size: 20px;
+  }
+}

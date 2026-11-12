@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "generatedAt": "2026-11-12T05:52:40.551Z",
+  "files": {
+    "AGENTS.md": {
+      "direct": [],
+      "transitive": [],
+      "tests": [],
+      "docs": [],
+      "routes": [],
+      "components": [],
+      "configs": []
+    },
+    "OPENCODE.md": {
+      "direct": [],
+      "transitive": [],
+      "tests": [],
+      "docs": [],
+      "routes": [],
+      "components": [],
+      "configs": []
+    },
+    "runwave/AGENTS.md": {
+      "direct": [],
+      "transitive": [],
+      "tests": [],
+      "docs": [],
+      "routes": [],
+      "components": [],
+      "configs": []
+    },
+    "runwave/App.tsx": {
+      "direct": [
+        "runwave/index.ts"
+      ],
+      "transitive": [],
+      "tests": [],
+      "docs": [],
+      "routes": [],
+      "components": [],
+      "configs": []
+    },
+    "runwave/index.ts": {
+      "direct": [],
+      "transitive": [],
+      "tests": [],
+      "docs": [],
+      "routes": [],
+      "components": [],
+      "configs": []
+    }
+  }
+}

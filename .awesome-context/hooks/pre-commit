@@ -1,0 +1,6 @@
+#!/bin/sh
+# awesome-context-engine pre-commit hook
+# Refreshes AI context on every commit. Zero background RAM usage.
+# To activate: cp .awesome-context/hooks/pre-commit .git/hooks/pre-commit
+#              chmod +x .git/hooks/pre-commit
+npx awesome-context-engine context:refresh --quiet

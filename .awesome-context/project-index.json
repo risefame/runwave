@@ -1,0 +1,105 @@
+{
+  "generatedAt": "2026-11-12T05:52:40.463Z",
+  "rootDir": "C:\\Users\\ogoly\\Desktop\\Project\\приложение для бега",
+  "totalFiles": 12,
+  "totalDirectories": 3,
+  "byExtension": {
+    "[no-ext]": 3,
+    ".md": 3,
+    ".json": 4,
+    ".tsx": 1,
+    ".ts": 1
+  },
+  "files": [
+    {
+      "path": ".gitignore",
+      "bytes": 551,
+      "mtimeMs": 1794462602411.1213
+    },
+    {
+      "path": "AGENTS.md",
+      "bytes": 2359,
+      "mtimeMs": 1794462760446.6443
+    },
+    {
+      "path": "OPENCODE.md",
+      "bytes": 2369,
+      "mtimeMs": 1794462760447.6484
+    },
+    {
+      "path": "runwave/.claude/settings.json",
+      "bytes": 71,
+      "mtimeMs": 1794457590998.5845
+    },
+    {
+      "path": "runwave/.gitignore",
+      "bytes": 440,
+      "mtimeMs": 1794457501746.7732
+    },
+    {
+      "path": "runwave/AGENTS.md",
+      "bytes": 2598,
+      "mtimeMs": 1794457444867.1409
+    },
+    {
+      "path": "runwave/app.json",
+      "bytes": 704,
+      "mtimeMs": 1794458293476.4526
+    },
+    {
+      "path": "runwave/App.tsx",
+      "bytes": 455,
+      "mtimeMs": 1794457501729.115
+    },
+    {
+      "path": "runwave/index.ts",
+      "bytes": 307,
+      "mtimeMs": 1794457501747.2922
+    },
+    {
+      "path": "runwave/LICENSE",
+      "bytes": 1106,
+      "mtimeMs": 1794457501750.8374
+    },
+    {
+      "path": "runwave/package.json",
+      "bytes": 1019,
+      "mtimeMs": 1794460520631.697
+    },
+    {
+      "path": "runwave/tsconfig.json",
+      "bytes": 85,
+      "mtimeMs": 1794457501748.3247
+    }
+  ],
+  "truncated": false,
+  "packageScripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": [
+    "@expo/vector-icons",
+    "@react-native-async-storage/async-storage",
+    "@rnmapbox/maps",
+    "@supabase/supabase-js",
+    "@turf/turf",
+    "expo",
+    "expo-constants",
+    "expo-haptics",
+    "expo-linear-gradient",
+    "expo-linking",
+    "expo-location",
+    "expo-router",
+    "expo-status-bar",
+    "react",
+    "react-native",
+    "react-native-safe-area-context",
+    "react-native-screens",
+    "react-native-svg",
+    "react-native-url-polyfill",
+    "@types/react",
+    "typescript"
+  ]
+}

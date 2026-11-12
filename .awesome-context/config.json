@@ -1,0 +1,31 @@
+{
+  "autoScanOnInit": true,
+  "memory": {
+    "enabled": true,
+    "maxItems": 8,
+    "maxTokens": 1200,
+    "includeTypes": ["rule", "preference", "decision", "project_state", "fact", "warning", "style"],
+    "excludeTypes": [],
+    "strictRedaction": true
+  },
+  "cache": {
+    "enabled": true,
+    "incremental": true
+  },
+  "context": {
+    "defaultTokenBudget": 4000,
+    "maxRelatedFiles": 8
+  },
+  "learning": {
+    "enabled": true,
+    "captureByDefault": false,
+    "requireApprovalForProfile": true,
+    "autoApproveSafeProfile": true,
+    "maxExperienceFiles": 500,
+    "skillSuggestionThreshold": 3,
+    "recallLimit": 8
+  },
+  "skills": {
+    "enabled": false
+  }
+}

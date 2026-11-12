@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "generatedAt": "2026-11-12T05:52:40.550Z",
+  "files": {
+    "AGENTS.md": {
+      "provides": [],
+      "consumed_by": [],
+      "related": [
+        "OPENCODE.md"
+      ],
+      "constraints": [
+        "Prefer reproducible scripts from npm scripts before ad-hoc shell commands.",
+        "Preserve these in all generated changes.",
+        "Team coding preferences, style, and constraints."
+      ],
+      "summary": "Documentation file."
+    },
+    "OPENCODE.md": {
+      "provides": [],
+      "consumed_by": [],
+      "related": [
+        "AGENTS.md"
+      ],
+      "constraints": [
+        "Prefer reproducible scripts from npm scripts before ad-hoc shell commands.",
+        "Preserve these in all generated changes.",
+        "Team coding preferences, style, and constraints."
+      ],
+      "summary": "Documentation file."
+    },
+    "runwave/AGENTS.md": {
+      "provides": [],
+      "consumed_by": [],
+      "related": [
+        "runwave/App.tsx",
+        "runwave/index.ts"
+      ],
+      "constraints": [
+        "Prefer reproducible scripts from npm scripts before ad-hoc shell commands.",
+        "Preserve these in all generated changes.",
+        "Team coding preferences, style, and constraints."
+      ],
+      "summary": "Documentation file."
+    },
+    "runwave/App.tsx": {
+      "provides": [],
+      "consumed_by": [
+        "runwave/index.ts"
+      ],
+      "related": [
+        "runwave/AGENTS.md",
+        "runwave/index.ts"
+      ],
+      "constraints": [
+        "Prefer reproducible scripts from npm scripts before ad-hoc shell commands.",
+        "Preserve these in all generated changes.",
+        "Team coding preferences, style, and constraints."
+      ],
+      "summary": "Module file: runwave/App.tsx"
+    },
+    "runwave/index.ts": {
+      "provides": [],
+      "consumed_by": [],
+      "related": [
+        "runwave/AGENTS.md",
+        "runwave/App.tsx"
+      ],
+      "constraints": [
+        "Prefer reproducible scripts from npm scripts before ad-hoc shell commands.",
+        "Preserve these in all generated changes.",
+        "Team coding preferences, style, and constraints."
+      ],
+      "summary": "Module file: runwave/index.ts"
+    }
+  }
+}
