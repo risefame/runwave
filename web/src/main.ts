@@ -15,19 +15,19 @@ import {
   type TerritoryShape,
 } from './territory';
 import { accuracyQuality, createGpsFilter, formatAccuracy } from './gpsFilter';
+import { buildMapStyle } from './map/style';
+import { palette } from './map/palette';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './style.css';
 
 declare const __APP_VERSION__: string;
 declare const __BUILD_DATE__: string;
 
-const STYLE_URL = 'https://tiles.openfreemap.org/styles/dark';
 const START_POINT: LngLat = [37.6173, 55.7558]; // Москва
 const RUN_SPEED = 3; // м/с
 const TRAIL_MIN_STEP = 1.2; // м между точками следа
 const MAX_FRAME_DT = 0.1; // с, защита от скачка после сворачивания вкладки
 const GEO_STALE_MS = 2500;
-const PLAYER_NEON = '#22e6ff';
 const DISTANCE_BONUS_PER_METER = 2; // очков за каждый метр дистанции
 const STORAGE_KEY = 'runwave:territories:v2';
 const SETTINGS_KEY = 'runwave:settings:v1';
@@ -37,6 +37,7 @@ const FLASH_DURATION_MS = 1100; // мс, анимация вспышки нов�
 const LABEL_MIN_MARGIN_PX = 8; // зазор между меткой площади и границей территории, px
 const M_PER_MILE = 1609.344;
 const M_PER_FOOT = 0.3048;
+const BUILDINGS_3D_LAYER_ID = 'building-3d';
 
 type Units = 'metric' | 'imperial';
 
@@ -48,7 +49,29 @@ interface RunSnapshot {
 interface StoredSettings {
   units?: Units;
   timeScale?: number;
+  buildings3d?: boolean;
+  lightMap?: boolean;
 }
+
+function readStoredSettings(): StoredSettings | null {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    return raw ? (JSON.parse(raw) as StoredSettings | null) : null;
+  } catch {
+    return null;
+  }
+}
+
+function isWeakDevice(): boolean {
+  const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+  const cores = navigator.hardwareConcurrency;
+  return (memory !== undefined && memory <= 4) || (cores !== undefined && cores <= 4);
+}
+
+const initialSettings = readStoredSettings();
+let buildings3d = initialSettings?.buildings3d === true;
+let lightMap =
+  typeof initialSettings?.lightMap === 'boolean' ? initialSettings.lightMap : isWeakDevice();
 
 function byId<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -72,6 +95,8 @@ const locateButton = byId<HTMLButtonElement>('btn-locate');
 const timescaleButton = byId<HTMLButtonElement>('btn-timescale');
 const geoButton = byId<HTMLButtonElement>('btn-geo');
 const geoDescEl = byId('geo-desc');
+const buildings3dButton = byId<HTMLButtonElement>('btn-buildings-3d');
+const lightMapButton = byId<HTMLButtonElement>('btn-light-map');
 const unitsMetricButton = byId<HTMLButtonElement>('btn-units-metric');
 const unitsImperialButton = byId<HTMLButtonElement>('btn-units-imperial');
 const territoriesToggleButton = byId<HTMLButtonElement>('btn-territories');
@@ -97,7 +122,7 @@ const clearButton = byId<HTMLButtonElement>('btn-clear');
 
 const map = new MapLibreMap({
   container: 'map',
-  style: STYLE_URL,
+  style: buildMapStyle({ light: lightMap }),
   center: START_POINT,
   zoom: 15.2,
   pitch: 50,
@@ -175,109 +200,179 @@ function updateRoute(): void {
   source.setData(lineFeature(waypoints.length > 1 ? waypoints : []));
 }
 
-map.on('load', () => {
-  map.addSource('territories', { type: 'geojson', data: territoryCollection() });
-  map.addLayer({
-    id: 'territories-fill',
-    type: 'fill',
-    source: 'territories',
-    paint: {
-      'fill-color': PLAYER_NEON,
-      'fill-opacity': 0.24,
-    },
-  });
-  map.addLayer({
-    id: 'territories-glow',
-    type: 'line',
-    source: 'territories',
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: {
-      'line-color': PLAYER_NEON,
-      'line-width': 12,
-      'line-blur': 14,
-      'line-opacity': 0.55,
-    },
-  });
-  map.addLayer({
-    id: 'territories-outline',
-    type: 'line',
-    source: 'territories',
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: {
-      'line-color': '#d9fdff',
-      'line-width': 2,
-      'line-opacity': 0.9,
-    },
-  });
+function applyBuildings3D(): void {
+  const existing = map.getLayer(BUILDINGS_3D_LAYER_ID);
 
-  map.addSource('territory-flash', { type: 'geojson', data: emptyCollection() });
-  map.addLayer({
-    id: 'territory-flash-fill',
-    type: 'fill',
-    source: 'territory-flash',
-    paint: {
-      'fill-color': '#eaffff',
-      'fill-opacity': 0,
-    },
-  });
-  map.addLayer({
-    id: 'territory-flash-line',
-    type: 'line',
-    source: 'territory-flash',
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: {
-      'line-color': PLAYER_NEON,
-      'line-width': 2,
-      'line-blur': 0,
-      'line-opacity': 0,
-    },
-  });
+  if (!buildings3d) {
+    if (existing) map.removeLayer(BUILDINGS_3D_LAYER_ID);
+    return;
+  }
 
-  map.addSource('trail', { type: 'geojson', data: lineFeature([]) });
-  map.addLayer({
-    id: 'trail-glow',
-    type: 'line',
-    source: 'trail',
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: {
-      'line-color': '#00e5ff',
-      'line-width': 18,
-      'line-blur': 18,
-      'line-opacity': 0.5,
-    },
-  });
-  map.addLayer({
-    id: 'trail-core',
-    type: 'line',
-    source: 'trail',
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: {
-      'line-color': '#d9fdff',
-      'line-width': 3.5,
-      'line-blur': 0.8,
-      'line-opacity': 0.95,
-    },
-  });
+  if (existing || !map.getLayer('building')) return;
 
-  map.addSource('route', { type: 'geojson', data: lineFeature([]) });
-  map.addLayer({
-    id: 'route-line',
-    type: 'line',
-    source: 'route',
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: {
-      'line-color': '#8f7bff',
-      'line-width': 2,
-      'line-dasharray': [1.5, 1.5],
-      'line-opacity': 0.7,
+  // Слой домов вставляем под территории и след, чтобы игра всегда была сверху.
+  const beforeId = map.getLayer('territories-fill') ? 'territories-fill' : undefined;
+  map.addLayer(
+    {
+      id: BUILDINGS_3D_LAYER_ID,
+      type: 'fill-extrusion',
+      source: 'openmaptiles',
+      'source-layer': 'building',
+      minzoom: 14,
+      filter: ['match', ['geometry-type'], ['MultiPolygon', 'Polygon'], true, false],
+      paint: {
+        'fill-extrusion-color': [
+          'interpolate',
+          ['linear'],
+          ['coalesce', ['get', 'render_height'], 0],
+          0,
+          palette.building.fill,
+          40,
+          palette.building.extrusion,
+          120,
+          palette.building.extrusionTop,
+        ],
+        'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 8],
+        'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
+        'fill-extrusion-opacity': 0.9,
+      },
     },
-  });
+    beforeId,
+  );
+}
+
+/** Игровые слои добавляются заново после каждой смены подложки. */
+function addOverlayLayers(): void {
+  if (!map.getSource('territories')) {
+    map.addSource('territories', { type: 'geojson', data: territoryCollection() });
+  }
+  if (!map.getLayer('territories-fill')) {
+    map.addLayer({
+      id: 'territories-fill',
+      type: 'fill',
+      source: 'territories',
+      paint: {
+        'fill-color': palette.overlay.territory,
+        'fill-opacity': 0.24,
+      },
+    });
+  }
+  if (!map.getLayer('territories-glow')) {
+    map.addLayer({
+      id: 'territories-glow',
+      type: 'line',
+      source: 'territories',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': palette.overlay.territory,
+        'line-width': 12,
+        'line-blur': 14,
+        'line-opacity': 0.55,
+      },
+    });
+  }
+  if (!map.getLayer('territories-outline')) {
+    map.addLayer({
+      id: 'territories-outline',
+      type: 'line',
+      source: 'territories',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': palette.overlay.territoryOutline,
+        'line-width': 2,
+        'line-opacity': 0.9,
+      },
+    });
+  }
+
+  if (!map.getSource('territory-flash')) {
+    map.addSource('territory-flash', { type: 'geojson', data: emptyCollection() });
+  }
+  if (!map.getLayer('territory-flash-fill')) {
+    map.addLayer({
+      id: 'territory-flash-fill',
+      type: 'fill',
+      source: 'territory-flash',
+      paint: {
+        'fill-color': palette.overlay.territoryFlash,
+        'fill-opacity': 0,
+      },
+    });
+  }
+  if (!map.getLayer('territory-flash-line')) {
+    map.addLayer({
+      id: 'territory-flash-line',
+      type: 'line',
+      source: 'territory-flash',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': palette.overlay.territory,
+        'line-width': 2,
+        'line-blur': 0,
+        'line-opacity': 0,
+      },
+    });
+  }
+
+  if (!map.getSource('trail')) {
+    map.addSource('trail', { type: 'geojson', data: lineFeature([]) });
+  }
+  if (!map.getLayer('trail-glow')) {
+    map.addLayer({
+      id: 'trail-glow',
+      type: 'line',
+      source: 'trail',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': palette.overlay.trail,
+        'line-width': 18,
+        'line-blur': 18,
+        'line-opacity': 0.5,
+      },
+    });
+  }
+  if (!map.getLayer('trail-core')) {
+    map.addLayer({
+      id: 'trail-core',
+      type: 'line',
+      source: 'trail',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': palette.overlay.trailCore,
+        'line-width': 3.5,
+        'line-blur': 0.8,
+        'line-opacity': 0.95,
+      },
+    });
+  }
+
+  if (!map.getSource('route')) {
+    map.addSource('route', { type: 'geojson', data: lineFeature([]) });
+  }
+  if (!map.getLayer('route-line')) {
+    map.addLayer({
+      id: 'route-line',
+      type: 'line',
+      source: 'route',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': palette.overlay.route,
+        'line-width': 2,
+        'line-dasharray': [1.5, 1.5],
+        'line-opacity': 0.7,
+      },
+    });
+  }
 
   updateTrail();
   updateRoute();
   updateTerritories();
   updateFlashSource();
-});
+  applyBuildings3D();
+}
+
+map.on('style.load', addOverlayLayers);
+map.on('load', addOverlayLayers);
 
 // ——— Территории ———
 
@@ -550,21 +645,18 @@ function loadState(): void {
 }
 
 function loadSettings(): void {
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return;
-    const parsed = JSON.parse(raw) as StoredSettings | null;
-    if (parsed?.units === 'imperial') units = 'imperial';
-    if (parsed?.timeScale === 10) timeScale = 10;
-  } catch {
-    units = 'metric';
-    timeScale = 1;
-  }
+  const parsed = readStoredSettings();
+  if (!parsed) return;
+  if (parsed.units === 'imperial') units = 'imperial';
+  if (parsed.timeScale === 10) timeScale = 10;
 }
 
 function saveSettings(): void {
   try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ units, timeScale } satisfies StoredSettings));
+    localStorage.setItem(
+      SETTINGS_KEY,
+      JSON.stringify({ units, timeScale, buildings3d, lightMap } satisfies StoredSettings),
+    );
   } catch {
     // настройки просто не переживут перезагрузку
   }
@@ -765,8 +857,13 @@ function applyTimeScale(): void {
 function applyGeoSwitch(): void {
   geoButton.setAttribute('aria-checked', String(geoActive));
   geoDescEl.textContent = geoActive
-    ? 'Идём за GPS устройства'
-    : 'Имитация кликами по карте';
+    ? 'Вкл.: GPS телефона'
+    : 'Выкл.: имитация кликами по карте';
+}
+
+function applyMapSettings(): void {
+  buildings3dButton.setAttribute('aria-checked', String(buildings3d));
+  lightMapButton.setAttribute('aria-checked', String(lightMap));
 }
 
 // ——— Меню ———
@@ -1167,6 +1264,20 @@ unitsImperialButton.addEventListener('click', () => {
   saveSettings();
 });
 
+buildings3dButton.addEventListener('click', () => {
+  buildings3d = !buildings3d;
+  applyMapSettings();
+  saveSettings();
+  applyBuildings3D();
+});
+
+lightMapButton.addEventListener('click', () => {
+  lightMap = !lightMap;
+  applyMapSettings();
+  saveSettings();
+  map.setStyle(buildMapStyle({ light: lightMap }), { diff: false });
+});
+
 clearButton.addEventListener('click', () => {
   const confirmed = window.confirm(
     'Сбросить все данные? Территории, очки и рекорд будут удалены без возможности вернуть.',
@@ -1270,6 +1381,7 @@ renderHud();
 applyUnits();
 applyTimeScale();
 applyGeoSwitch();
+applyMapSettings();
 renderGpsOff();
 renderBuildInfo();
 setupFirstRunHint();

@@ -76,6 +76,7 @@
 
       <div class="attribution">
         © <a href="https://openfreemap.org" target="_blank" rel="noreferrer">OpenFreeMap</a> ·
+        © <a href="https://openmaptiles.org" target="_blank" rel="noreferrer">OpenMapTiles</a> ·
         © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OSM</a>
       </div>
 
@@ -177,7 +178,7 @@
           <div class="setting">
             <div class="setting-text">
               <span class="setting-name">Реальная геолокация</span>
-              <span class="setting-desc" id="geo-desc">Имитация кликами по карте</span>
+              <span class="setting-desc" id="geo-desc">Выкл.: имитация кликами по карте</span>
             </div>
             <button
               id="btn-geo"
@@ -186,6 +187,40 @@
               role="switch"
               aria-checked="false"
               aria-label="Реальная геолокация"
+            >
+              <span></span>
+            </button>
+          </div>
+
+          <div class="setting">
+            <div class="setting-text">
+              <span class="setting-name">3D-здания</span>
+              <span class="setting-desc">Объёмные дома в перспективе</span>
+            </div>
+            <button
+              id="btn-buildings-3d"
+              class="switch"
+              type="button"
+              role="switch"
+              aria-checked="false"
+              aria-label="3D-здания"
+            >
+              <span></span>
+            </button>
+          </div>
+
+          <div class="setting">
+            <div class="setting-text">
+              <span class="setting-name">Лёгкая карта</span>
+              <span class="setting-desc">Меньше слоёв для слабых телефонов</span>
+            </div>
+            <button
+              id="btn-light-map"
+              class="switch"
+              type="button"
+              role="switch"
+              aria-checked="false"
+              aria-label="Лёгкая карта"
             >
               <span></span>
             </button>

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-12T11:55:30.774Z",
+  "generatedAt": "2026-11-12T16:09:50.753Z",
   "root": ".",
   "parserVersion": 2,
   "graphVersion": 1,
@@ -77,13 +77,15 @@
       "lastProcessed": "2026-11-12T11:53:36.602Z"
     },
     "web/src/main.ts": {
-      "hash": "dc357c536d547c3a2ca6f43dd5de94080bfdc7260d5484f033527f635fdae997",
-      "size": 38025,
-      "mtimeMs": 1794484440520.2188,
+      "hash": "28cd966846956999efb0a05c3be9264a091e9e96b739ad5ee4f8fcac4663e8d3",
+      "size": 41732,
+      "mtimeMs": 1794499760541.4646,
       "language": "typescript",
       "symbols": [],
       "imports": [
         "./gpsFilter",
+        "./map/palette",
+        "./map/style",
         "./style.css",
         "geojson",
         "maplibre-gl",
@@ -91,7 +93,52 @@
       ],
       "exports": [],
       "summary": "Module file: web/src/main.ts",
-      "lastProcessed": "2026-11-12T11:55:30.773Z"
+      "lastProcessed": "2026-11-12T16:09:50.751Z"
+    },
+    "web/src/map/palette.ts": {
+      "hash": "5c5438855ce20f4a6bc697b98f67318fc69309eace7e0c1222b227c6a7a92f0b",
+      "size": 1343,
+      "mtimeMs": 1794499369447.6633,
+      "language": "typescript",
+      "symbols": [
+        "palette"
+      ],
+      "imports": [],
+      "exports": [
+        "palette"
+      ],
+      "summary": "Defines palette.",
+      "lastProcessed": "2026-11-12T16:06:55.717Z"
+    },
+    "web/src/map/style.json": {
+      "hash": "c90dbfd0e428f7ea40740c29e789167c24f79e91327761960e08c44ca8f7795e",
+      "size": 20960,
+      "mtimeMs": 1794498961244.4224,
+      "language": "json",
+      "symbols": [],
+      "imports": [],
+      "exports": [],
+      "summary": "Configuration module.",
+      "lastProcessed": "2026-11-12T16:06:55.717Z"
+    },
+    "web/src/map/style.ts": {
+      "hash": "c5da36cb115a4e0bd29d83e4449b57e00f937d8414a93c02fc343edd440b8802",
+      "size": 8359,
+      "mtimeMs": 1794499212839.0586,
+      "language": "typescript",
+      "symbols": [
+        "buildMapStyle"
+      ],
+      "imports": [
+        "./palette",
+        "./style.json",
+        "maplibre-gl"
+      ],
+      "exports": [
+        "buildMapStyle"
+      ],
+      "summary": "Defines buildMapStyle.",
+      "lastProcessed": "2026-11-12T16:06:55.717Z"
     },
     "web/src/territory.test.ts": {
       "hash": "827fa57aac5a01cd439482b0595a0b5e61b1ce982ce5b65c2615d8c99b309121",
