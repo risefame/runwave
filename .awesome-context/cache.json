@@ -1,153 +1,45 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-12T10:48:50.456Z",
+  "generatedAt": "2026-11-12T11:55:30.774Z",
   "root": ".",
   "parserVersion": 2,
   "graphVersion": 1,
-  "configFingerprint": "b0fad1a33fcb5ed7b663aa756a0a20cd7b0630e7939f7544e901b981a3b3fcc1",
+  "configFingerprint": "41fc6a2b57d19708c4ed4295152978bb4b6e8b1c123efa95d43ec644db508a88",
   "files": {
     "AGENTS.md": {
-      "hash": "155d9aec0ad78e12e59834474134f100fcff82d09eed84e6a197354065ba0683",
-      "size": 737,
-      "mtimeMs": 1794462970178.286,
+      "hash": "d7b07c5ee266617f1a6de85811c3b39418e43cd41d83932934eca23a789537cc",
+      "size": 655,
+      "mtimeMs": 1794482396384.6758,
       "language": "markdown",
       "symbols": [],
       "imports": [],
       "exports": [],
       "summary": "Documentation file.",
-      "lastProcessed": "2026-11-12T05:57:20.427Z"
+      "lastProcessed": "2026-11-12T11:53:36.600Z"
     },
-    "runwave/.claude/settings.json": {
-      "hash": "1e7be1a32a758be623e4897bcd97715f42c1585f3d7389eaa996c230e8fe9834",
-      "size": 71,
-      "mtimeMs": 1794457590998.5845,
-      "language": "json",
-      "symbols": [],
-      "imports": [],
-      "exports": [],
-      "summary": "Configuration module.",
-      "lastProcessed": "2026-11-12T05:52:40.492Z"
-    },
-    "runwave/.expo/devices.json": {
-      "hash": "bf26ff34a2c5780a4d64769a297a4a82915df9b8f7b1096173f0fbcc20550e6e",
-      "size": 20,
-      "mtimeMs": 1794474463485.527,
-      "language": "json",
-      "symbols": [],
-      "imports": [],
-      "exports": [],
-      "summary": "Configuration module.",
-      "lastProcessed": "2026-11-12T09:16:51.541Z"
-    },
-    "runwave/.expo/README.md": {
-      "hash": "4fdb06877cd3ebb8d662c4c3a839bc2e1d8d2e4bc0214ae42f89fd6e0d4515cd",
-      "size": 889,
-      "mtimeMs": 1794474463363.8909,
+    "README.md": {
+      "hash": "81434c341a681f506313d9d5536a1efa8e4e57bbd5399228001b0819984b73a1",
+      "size": 24,
+      "mtimeMs": 1794482747941.1216,
       "language": "markdown",
       "symbols": [],
       "imports": [],
       "exports": [],
       "summary": "Documentation file.",
-      "lastProcessed": "2026-11-12T09:16:51.542Z"
+      "lastProcessed": "2026-11-12T11:53:36.600Z"
     },
-    "runwave/AGENTS.md": {
-      "hash": "b7d381dd55800d242252e8bf89a40b026586d254e34908210931bc35582396a3",
-      "size": 2598,
-      "mtimeMs": 1794457444867.1409,
-      "language": "markdown",
-      "symbols": [],
-      "imports": [],
-      "exports": [],
-      "summary": "Documentation file.",
-      "lastProcessed": "2026-11-12T05:52:40.492Z"
-    },
-    "runwave/app.json": {
-      "hash": "95da3f1f2c16a7e6be669c16444f8656fe8cc9ff733b290d0043f92c4bfce79a",
-      "size": 965,
-      "mtimeMs": 1794475002578.6382,
-      "language": "json",
-      "symbols": [],
-      "imports": [],
-      "exports": [],
-      "summary": "Configuration module.",
-      "lastProcessed": "2026-11-12T09:16:51.542Z"
-    },
-    "runwave/App.tsx": {
-      "hash": "b070a75989e60a985b182eb519d5711296b32b38621d9909b85ae95f8a664bce",
-      "size": 3967,
-      "mtimeMs": 1794475000405.4785,
-      "language": "typescript",
-      "symbols": [],
-      "imports": [
-        "@maplibre/maplibre-react-native",
-        "expo-location",
-        "expo-status-bar",
-        "react",
-        "react-native"
-      ],
-      "exports": [],
-      "summary": "Module file: runwave/App.tsx",
-      "lastProcessed": "2026-11-12T09:16:51.542Z"
-    },
-    "runwave/eas.json": {
-      "hash": "196064f5acc20698fb173c28364ef7bea535d18f60941277d13212280f1c7206",
-      "size": 245,
-      "mtimeMs": 1794475003338.8572,
-      "language": "json",
-      "symbols": [],
-      "imports": [],
-      "exports": [],
-      "summary": "Configuration module.",
-      "lastProcessed": "2026-11-12T09:16:51.543Z"
-    },
-    "runwave/index.ts": {
-      "hash": "5c157f4d44972d9c84415e1e4bda595b3abcd8cf733f8a9cd20935bec3eccc42",
-      "size": 307,
-      "mtimeMs": 1794457501747.2922,
-      "language": "typescript",
-      "symbols": [],
-      "imports": [
-        "./App",
-        "expo"
-      ],
-      "exports": [],
-      "summary": "Module file: runwave/index.ts",
-      "lastProcessed": "2026-11-12T05:52:40.493Z"
-    },
-    "runwave/package.json": {
-      "hash": "c520b796b260651073af6d19e12cbf9f33aa62cac028f888fc68893a915c0685",
-      "size": 1070,
-      "mtimeMs": 1794474939919.126,
-      "language": "json",
-      "symbols": [],
-      "imports": [],
-      "exports": [],
-      "summary": "Configuration module.",
-      "lastProcessed": "2026-11-12T09:16:51.543Z"
-    },
-    "runwave/tsconfig.json": {
-      "hash": "712583ff9cdb4b4e4f9b000a4a56d68db8dc1921cbfbc36d490a3a9f2be3dd72",
-      "size": 85,
-      "mtimeMs": 1794457501748.3247,
-      "language": "json",
-      "symbols": [],
-      "imports": [],
-      "exports": [],
-      "summary": "Configuration module.",
-      "lastProcessed": "2026-11-12T05:52:40.494Z"
-    },
-    "web-prototype/package.json": {
-      "hash": "898744d2ca1ac25c1ced7590f3395da3fcfb130a0ac3345422ef9327f25717e8",
+    "web/package.json": {
+      "hash": "067c91911216121f5df8d388641dac4d3473eee24a83680b47484ecacb38f673",
       "size": 619,
-      "mtimeMs": 1794477102790.7825,
+      "mtimeMs": 1794483944263.9438,
       "language": "json",
       "symbols": [],
       "imports": [],
       "exports": [],
       "summary": "Configuration module.",
-      "lastProcessed": "2026-11-12T09:58:58.197Z"
+      "lastProcessed": "2026-11-12T11:53:36.600Z"
     },
-    "web-prototype/src/gpsFilter.test.ts": {
+    "web/src/gpsFilter.test.ts": {
       "hash": "e6a16a5a7481f8ab61ddd4453c8614586720d4d4b1a5d4cbd25364f8e8a4dbb8",
       "size": 6079,
       "mtimeMs": 1794478759711.4524,
@@ -158,10 +50,10 @@
         "vitest"
       ],
       "exports": [],
-      "summary": "Module file: web-prototype/src/gpsFilter.test.ts",
-      "lastProcessed": "2026-11-12T10:40:56.374Z"
+      "summary": "Module file: web/src/gpsFilter.test.ts",
+      "lastProcessed": "2026-11-12T11:53:36.601Z"
     },
-    "web-prototype/src/gpsFilter.ts": {
+    "web/src/gpsFilter.ts": {
       "hash": "206806ae1d7155f8af48f9647e06d5de053929f543eb8e4a47d265e83eea8a33",
       "size": 10603,
       "mtimeMs": 1794478728569.9753,
@@ -182,12 +74,12 @@
         "GPS_FILTER_CONFIG"
       ],
       "summary": "Defines accuracyQuality, createGpsFilter, formatAccuracy.",
-      "lastProcessed": "2026-11-12T10:40:56.374Z"
+      "lastProcessed": "2026-11-12T11:53:36.602Z"
     },
-    "web-prototype/src/main.ts": {
-      "hash": "306eea79e2be20f508fc0fc98d3ef965968ce258f72a0e65836f17d59a7cf4c9",
-      "size": 27374,
-      "mtimeMs": 1794480251648.2383,
+    "web/src/main.ts": {
+      "hash": "dc357c536d547c3a2ca6f43dd5de94080bfdc7260d5484f033527f635fdae997",
+      "size": 38025,
+      "mtimeMs": 1794484440520.2188,
       "language": "typescript",
       "symbols": [],
       "imports": [
@@ -198,10 +90,10 @@
         "maplibre-gl/dist/maplibre-gl.css"
       ],
       "exports": [],
-      "summary": "Module file: web-prototype/src/main.ts",
-      "lastProcessed": "2026-11-12T10:48:50.454Z"
+      "summary": "Module file: web/src/main.ts",
+      "lastProcessed": "2026-11-12T11:55:30.773Z"
     },
-    "web-prototype/src/territory.test.ts": {
+    "web/src/territory.test.ts": {
       "hash": "827fa57aac5a01cd439482b0595a0b5e61b1ce982ce5b65c2615d8c99b309121",
       "size": 12398,
       "mtimeMs": 1794480011848.505,
@@ -214,10 +106,10 @@
         "vitest"
       ],
       "exports": [],
-      "summary": "Module file: web-prototype/src/territory.test.ts",
-      "lastProcessed": "2026-11-12T10:40:56.375Z"
+      "summary": "Module file: web/src/territory.test.ts",
+      "lastProcessed": "2026-11-12T11:53:36.603Z"
     },
-    "web-prototype/src/territory.ts": {
+    "web/src/territory.ts": {
       "hash": "c1eef9e4a3c80c830b257fd90049b3d677cf16fcab21f009849df8a35584a6a4",
       "size": 22542,
       "mtimeMs": 1794480247533.1333,
@@ -259,9 +151,9 @@
         "MIN_GAIN_M2"
       ],
       "summary": "Defines boundaryCrossing, boundaryExitPoint, captureTerritory.",
-      "lastProcessed": "2026-11-12T10:48:50.454Z"
+      "lastProcessed": "2026-11-12T11:53:36.603Z"
     },
-    "web-prototype/tsconfig.json": {
+    "web/tsconfig.json": {
       "hash": "8cfeed07c93e188fcabfa02ec52e1dcbd2874e203c98037c20da795bba40c323",
       "size": 518,
       "mtimeMs": 1794475483060.9424,
@@ -270,7 +162,21 @@
       "imports": [],
       "exports": [],
       "summary": "Configuration module.",
-      "lastProcessed": "2026-11-12T09:26:01.617Z"
+      "lastProcessed": "2026-11-12T11:53:36.604Z"
+    },
+    "web/vite.config.ts": {
+      "hash": "760aba639690ebca31f6222d83e13fabde20d0f924fc10177445ebf625181cae",
+      "size": 234,
+      "mtimeMs": 1794483939675.288,
+      "language": "typescript",
+      "symbols": [],
+      "imports": [
+        "./package.json",
+        "vite"
+      ],
+      "exports": [],
+      "summary": "Configuration module.",
+      "lastProcessed": "2026-11-12T11:53:36.604Z"
     }
   }
 }

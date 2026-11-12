@@ -18,6 +18,9 @@ import { accuracyQuality, createGpsFilter, formatAccuracy } from './gpsFilter';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './style.css';
 
+declare const __APP_VERSION__: string;
+declare const __BUILD_DATE__: string;
+
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/dark';
 const START_POINT: LngLat = [37.6173, 55.7558]; // Москва
 const RUN_SPEED = 3; // м/с
@@ -27,8 +30,25 @@ const GEO_STALE_MS = 2500;
 const PLAYER_NEON = '#22e6ff';
 const DISTANCE_BONUS_PER_METER = 2; // очков за каждый метр дистанции
 const STORAGE_KEY = 'runwave:territories:v2';
+const SETTINGS_KEY = 'runwave:settings:v1';
+const BEST_RUN_KEY = 'runwave:best-run:v1';
+const HINT_KEY = 'runwave:hint:v1';
 const FLASH_DURATION_MS = 1100; // мс, анимация вспышки новой территории
 const LABEL_MIN_MARGIN_PX = 8; // зазор между меткой площади и границей территории, px
+const M_PER_MILE = 1609.344;
+const M_PER_FOOT = 0.3048;
+
+type Units = 'metric' | 'imperial';
+
+interface RunSnapshot {
+  area: number;
+  score: number;
+}
+
+interface StoredSettings {
+  units?: Units;
+  timeScale?: number;
+}
 
 function byId<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -39,17 +59,37 @@ function byId<T extends HTMLElement>(id: string): T {
 const distanceEl = byId('distance');
 const timeEl = byId('time');
 const speedEl = byId('speed');
-const gpsStatEl = byId('gps-stat');
+const speedUnitEl = byId('speed-unit');
+const scoreEl = byId('score');
+const gpsPillEl = byId('gps-pill');
 const gpsAccuracyEl = byId('gps-accuracy');
 const runButton = byId<HTMLButtonElement>('btn-run');
-const resetButton = byId<HTMLButtonElement>('btn-reset');
+const menuButton = byId<HTMLButtonElement>('btn-menu');
+const menuCloseButton = byId<HTMLButtonElement>('btn-menu-close');
+const menuEl = byId('menu');
+const scrimEl = byId('scrim');
+const locateButton = byId<HTMLButtonElement>('btn-locate');
 const timescaleButton = byId<HTMLButtonElement>('btn-timescale');
 const geoButton = byId<HTMLButtonElement>('btn-geo');
-const hintEl = byId('hint');
+const geoDescEl = byId('geo-desc');
+const unitsMetricButton = byId<HTMLButtonElement>('btn-units-metric');
+const unitsImperialButton = byId<HTMLButtonElement>('btn-units-imperial');
+const territoriesToggleButton = byId<HTMLButtonElement>('btn-territories');
+const territoriesPanelEl = byId('territories-panel');
+const hintCardEl = byId<HTMLDivElement>('hint-card');
+const hintCloseButton = byId<HTMLButtonElement>('btn-hint-close');
+const summaryEl = byId<HTMLDivElement>('run-summary');
+const summaryCloseButton = byId<HTMLButtonElement>('btn-summary-close');
+const sumDistanceEl = byId('sum-distance');
+const sumTimeEl = byId('sum-time');
+const sumAreaEl = byId('sum-area');
+const sumScoreEl = byId('sum-score');
+const statAreaEl = byId('stat-area');
+const statCountEl = byId('stat-count');
+const statBestEl = byId('stat-best');
+const versionEl = byId('app-version');
+const buildDateEl = byId('build-date');
 const statusEl = byId('status');
-const scoreEl = byId('score');
-const scoreAreaEl = byId('score-area');
-const scoreDistanceEl = byId('score-distance');
 const territoryCountEl = byId('territory-count');
 const territoryListEl = byId<HTMLUListElement>('territory-list');
 const territoryEmptyEl = byId('territory-empty');
@@ -82,6 +122,7 @@ const waypointMarkers: Marker[] = [];
 let trail: LngLat[] = [];
 let running = false;
 let timeScale = 1;
+let units: Units = 'metric';
 let runTime = 0; // секунды модельного времени
 let distance = 0; // метры
 let currentSpeed = 0; // м/с
@@ -90,6 +131,10 @@ let geoWatchId: number | null = null;
 let geoCentered = false;
 let lastGeoFix = 0;
 const geoFilter = createGpsFilter();
+
+let followPlayer = true;
+let runSnapshot: RunSnapshot | null = null;
+let bestRunDistance = 0;
 
 // ——— Геометрия ———
 
@@ -433,9 +478,14 @@ map.on('moveend', updateLabelVisibility);
 map.on('resize', updateLabelVisibility);
 
 function renderScore(): void {
-  setText(scoreEl, totalScore().toLocaleString('ru-RU'));
-  setText(scoreAreaEl, Math.round(totalArea()).toLocaleString('ru-RU'));
-  setText(scoreDistanceEl, currentDistanceBonus().toLocaleString('ru-RU'));
+  setText(scoreEl, formatScore(totalScore()));
+  renderMenuStats();
+}
+
+function renderMenuStats(): void {
+  setText(statAreaEl, formatArea(totalArea()));
+  setText(statCountEl, String(territories.length));
+  setText(statBestEl, bestRunDistance > 0 ? formatDistance(bestRunDistance) : '—');
 }
 
 function renderTerritoryList(): void {
@@ -496,6 +546,48 @@ function loadState(): void {
   } catch {
     territories = [];
     bonusSaved = 0;
+  }
+}
+
+function loadSettings(): void {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as StoredSettings | null;
+    if (parsed?.units === 'imperial') units = 'imperial';
+    if (parsed?.timeScale === 10) timeScale = 10;
+  } catch {
+    units = 'metric';
+    timeScale = 1;
+  }
+}
+
+function saveSettings(): void {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ units, timeScale } satisfies StoredSettings));
+  } catch {
+    // настройки просто не переживут перезагрузку
+  }
+}
+
+function loadBestRun(): void {
+  try {
+    const raw = localStorage.getItem(BEST_RUN_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as { distance?: unknown } | null;
+    if (parsed && typeof parsed.distance === 'number' && Number.isFinite(parsed.distance)) {
+      bestRunDistance = Math.max(0, parsed.distance);
+    }
+  } catch {
+    bestRunDistance = 0;
+  }
+}
+
+function saveBestRun(): void {
+  try {
+    localStorage.setItem(BEST_RUN_KEY, JSON.stringify({ distance: Math.round(bestRunDistance) }));
+  } catch {
+    // рекорд просто не переживёт перезагрузку
   }
 }
 
@@ -590,8 +682,6 @@ function advanceTrail(previous: LngLat, next: LngLat): void {
 }
 
 function clearTerritories(): void {
-  if (territories.length === 0) return;
-
   territories = [];
   bonusSaved = 0;
   bonusAnchorDistance = distance;
@@ -605,7 +695,6 @@ function clearTerritories(): void {
   renderScore();
   renderTerritoryList();
   saveState();
-  showStatus('Территории очищены');
 }
 
 // ——— Интерфейс ———
@@ -623,8 +712,26 @@ function setText(element: HTMLElement, text: string): void {
   if (element.textContent !== text) element.textContent = text;
 }
 
+const compactScoreFormat = new Intl.NumberFormat('ru-RU', {
+  notation: 'compact',
+  maximumFractionDigits: 1,
+});
+
+function formatScore(value: number): string {
+  const rounded = Math.round(value);
+  return rounded >= 10000 ? compactScoreFormat.format(rounded) : rounded.toLocaleString('ru-RU');
+}
+
 function formatDistance(meters: number): string {
+  if (units === 'imperial') {
+    const miles = meters / M_PER_MILE;
+    return miles < 0.1 ? `${Math.round(meters / M_PER_FOOT)} фт` : `${miles.toFixed(2)} ми`;
+  }
   return meters < 1000 ? `${Math.floor(meters)} м` : `${(meters / 1000).toFixed(2)} км`;
+}
+
+function formatSpeedValue(mps: number): string {
+  return (units === 'imperial' ? mps * 2.2369363 : mps * 3.6).toFixed(1);
 }
 
 function formatTime(totalSeconds: number): string {
@@ -640,9 +747,141 @@ function formatTime(totalSeconds: number): string {
 function renderHud(): void {
   setText(distanceEl, formatDistance(distance));
   setText(timeEl, formatTime(runTime));
-  setText(speedEl, (currentSpeed * 3.6).toFixed(1));
-  renderScore();
+  setText(speedEl, formatSpeedValue(currentSpeed));
 }
+
+function applyUnits(): void {
+  unitsMetricButton.setAttribute('aria-pressed', String(units === 'metric'));
+  unitsImperialButton.setAttribute('aria-pressed', String(units === 'imperial'));
+  speedUnitEl.textContent = units === 'imperial' ? 'миль/ч' : 'км/ч';
+  renderHud();
+  renderMenuStats();
+}
+
+function applyTimeScale(): void {
+  timescaleButton.setAttribute('aria-checked', String(timeScale === 10));
+}
+
+function applyGeoSwitch(): void {
+  geoButton.setAttribute('aria-checked', String(geoActive));
+  geoDescEl.textContent = geoActive
+    ? 'Идём за GPS устройства'
+    : 'Имитация кликами по карте';
+}
+
+// ——— Меню ———
+
+function openMenu(): void {
+  menuEl.classList.add('open');
+  menuEl.setAttribute('aria-hidden', 'false');
+  menuButton.setAttribute('aria-expanded', 'true');
+  scrimEl.hidden = false;
+  requestAnimationFrame(() => scrimEl.classList.add('open'));
+  menuCloseButton.focus({ preventScroll: true });
+}
+
+function closeMenu(): void {
+  if (!menuEl.classList.contains('open')) return;
+  menuEl.classList.remove('open');
+  menuEl.setAttribute('aria-hidden', 'true');
+  menuButton.setAttribute('aria-expanded', 'false');
+  scrimEl.classList.remove('open');
+  scrimEl.hidden = true;
+  menuButton.focus({ preventScroll: true });
+}
+
+menuButton.addEventListener('click', openMenu);
+menuCloseButton.addEventListener('click', closeMenu);
+scrimEl.addEventListener('click', closeMenu);
+
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  if (!summaryEl.hidden) {
+    hideRunSummary();
+    return;
+  }
+  closeMenu();
+});
+
+territoriesToggleButton.addEventListener('click', () => {
+  const expanded = territoriesToggleButton.getAttribute('aria-expanded') === 'true';
+  territoriesToggleButton.setAttribute('aria-expanded', String(!expanded));
+  territoriesPanelEl.hidden = expanded;
+});
+
+// ——— Итог бега ———
+
+function showRunSummary(summary: {
+  distance: number;
+  time: number;
+  area: number;
+  score: number;
+}): void {
+  setText(sumDistanceEl, formatDistance(summary.distance));
+  setText(sumTimeEl, formatTime(summary.time));
+  setText(sumAreaEl, formatArea(summary.area));
+  setText(sumScoreEl, `+${formatScore(summary.score)}`);
+  summaryEl.hidden = false;
+  summaryCloseButton.focus({ preventScroll: true });
+}
+
+function hideRunSummary(): void {
+  if (summaryEl.hidden) return;
+  summaryEl.hidden = true;
+  runButton.focus({ preventScroll: true });
+}
+
+summaryCloseButton.addEventListener('click', hideRunSummary);
+summaryEl.addEventListener('click', (event) => {
+  if (event.target === summaryEl) hideRunSummary();
+});
+
+// ——— Экран не гаснет ———
+
+const wakeLockApi: WakeLock | null = 'wakeLock' in navigator ? navigator.wakeLock : null;
+let wakeLock: WakeLockSentinel | null = null;
+let wakeLockWarned = false;
+
+function warnWakeLock(message: string): void {
+  if (wakeLockWarned) return;
+  wakeLockWarned = true;
+  showStatus(message);
+}
+
+async function requestWakeLock(): Promise<void> {
+  if (!wakeLockApi) {
+    // Запасной вариант: ничего не блокируем, но честно предупреждаем.
+    warnWakeLock('Браузер не умеет держать экран включённым — он может погаснуть');
+    return;
+  }
+  if (wakeLock || document.visibilityState !== 'visible') return;
+  try {
+    const lock = await wakeLockApi.request('screen');
+    wakeLock = lock;
+    lock.addEventListener('release', () => {
+      if (wakeLock === lock) wakeLock = null;
+    });
+  } catch {
+    warnWakeLock('Не удалось запретить блокировку экрана — он может погаснуть');
+  }
+}
+
+async function releaseWakeLock(): Promise<void> {
+  const lock = wakeLock;
+  wakeLock = null;
+  if (!lock) return;
+  try {
+    await lock.release();
+  } catch {
+    // уже отпущен системой
+  }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && running) void requestWakeLock();
+});
+
+// ——— Бег ———
 
 function setRunning(value: boolean): void {
   running = value;
@@ -653,12 +892,93 @@ function setRunning(value: boolean): void {
     geoFilter.reset();
     geoCentered = false;
     lastGeoFix = performance.now();
+    void requestWakeLock();
   } else {
     currentSpeed = 0;
+    void releaseWakeLock();
   }
 }
 
+function startRun(): void {
+  syncBonus();
+  runSnapshot = { area: totalArea(), score: totalScore() };
+  distance = 0;
+  bonusAnchorDistance = 0;
+  runTime = 0;
+  currentSpeed = 0;
+  if (!hintCardEl.hidden) dismissFirstRunHint();
+  setRunning(true);
+  renderHud();
+  renderScore();
+}
+
+function stopRun(): void {
+  const snapshot = runSnapshot;
+  const summary = snapshot
+    ? {
+        distance,
+        time: runTime,
+        area: Math.max(0, totalArea() - snapshot.area),
+        score: Math.max(0, totalScore() - snapshot.score),
+      }
+    : null;
+
+  runSnapshot = null;
+  setRunning(false);
+  renderHud();
+
+  if (!summary) return;
+  if (summary.distance >= 1 && summary.distance > bestRunDistance) {
+    bestRunDistance = summary.distance;
+    saveBestRun();
+    renderMenuStats();
+  }
+  if (summary.distance >= 1) showRunSummary(summary);
+}
+
+runButton.addEventListener('click', () => {
+  if (running) stopRun();
+  else startRun();
+});
+
 // ——— Маршрут и движение ———
+
+function placePlayer(next: LngLat): void {
+  position = next;
+  playerMarker.setLngLat(next);
+}
+
+function movePlayerTo(next: LngLat, smooth: boolean): void {
+  placePlayer(next);
+  if (!followPlayer) return;
+  if (smooth) {
+    map.easeTo({ center: next, duration: 700 });
+  } else {
+    map.jumpTo({ center: next });
+  }
+}
+
+function setFollow(value: boolean): void {
+  followPlayer = value;
+  locateButton.setAttribute('aria-pressed', String(value));
+}
+
+// Карту подвинули руками — автоследование выключается до нажатия «на мне».
+map.on('dragstart', () => {
+  if (followPlayer) setFollow(false);
+});
+map.on('rotatestart', () => {
+  if (followPlayer) setFollow(false);
+});
+
+locateButton.addEventListener('click', () => {
+  setFollow(true);
+  map.easeTo({
+    center: position,
+    zoom: Math.max(map.getZoom(), 16),
+    duration: 700,
+  });
+});
 
 function addWaypoint(point: LngLat): void {
   waypoints.push(point);
@@ -668,7 +988,7 @@ function addWaypoint(point: LngLat): void {
   waypointMarkers.push(new Marker({ element, anchor: 'center' }).setLngLat(point).addTo(map));
 
   updateRoute();
-  if (!running) setRunning(true);
+  if (!running) startRun();
 }
 
 function clearWaypoints(): void {
@@ -685,14 +1005,9 @@ function dropWaypoint(): void {
   updateRoute();
 }
 
-function movePlayerTo(next: LngLat): void {
-  position = next;
-  playerMarker.setLngLat(next);
-}
-
 function registerMove(next: LngLat, meters: number): void {
   const previous = position;
-  movePlayerTo(next);
+  movePlayerTo(next, false);
   if (!running) return;
 
   distance += meters;
@@ -735,14 +1050,20 @@ map.on('click', (event) => {
 
 function renderGpsAccuracy(accuracy: number): void {
   const quality = accuracyQuality(accuracy);
+  gpsPillEl.dataset.quality = quality;
   gpsAccuracyEl.textContent = formatAccuracy(accuracy);
-  gpsAccuracyEl.className = `stat-value gps-${quality}`;
-  gpsAccuracyEl.title =
+  gpsPillEl.title =
     quality === 'good'
       ? 'Хороший сигнал GPS'
       : quality === 'fair'
         ? 'Средний сигнал GPS'
         : 'Слабый сигнал GPS: замеры отбрасываются';
+}
+
+function renderGpsOff(): void {
+  gpsPillEl.dataset.quality = 'off';
+  gpsAccuracyEl.textContent = 'GPS выкл';
+  gpsPillEl.title = 'Замеры GPS не используются';
 }
 
 function handlePosition(reading: GeolocationPosition): void {
@@ -757,10 +1078,12 @@ function handlePosition(reading: GeolocationPosition): void {
     const point = result.point;
     if (!geoCentered) {
       geoCentered = true;
-      map.flyTo({ center: point, zoom: Math.max(map.getZoom(), 16), duration: 900 });
+      if (followPlayer) {
+        map.easeTo({ center: point, zoom: Math.max(map.getZoom(), 16), duration: 900 });
+      }
     }
     const previous = position;
-    movePlayerTo(point);
+    movePlayerTo(point, true);
 
     if (running) {
       distance += result.stepMeters;
@@ -771,7 +1094,7 @@ function handlePosition(reading: GeolocationPosition): void {
   }
 
   if (result.standing) currentSpeed = 0;
-  else if (!running) movePlayerTo(raw);
+  else if (!running) placePlayer(raw);
 }
 
 function handleGeoError(error: GeolocationPositionError): void {
@@ -795,13 +1118,12 @@ function startGeolocation(): void {
   lastGeoFix = performance.now();
   currentSpeed = 0;
   clearWaypoints();
-  gpsStatEl.hidden = false;
-  gpsAccuracyEl.textContent = '…';
-  gpsAccuracyEl.className = 'stat-value';
-  geoButton.classList.add('active');
-  geoButton.setAttribute('aria-pressed', 'true');
-  geoButton.textContent = 'Геолокация: вкл';
-  hintEl.textContent = 'Следуем за реальной геолокацией браузера';
+  gpsPillEl.dataset.quality = 'waiting';
+  gpsAccuracyEl.textContent = '±… м';
+  gpsPillEl.title = 'Ждём первый замер GPS';
+  applyGeoSwitch();
+  setFollow(true);
+  showStatus('Следуем за реальной геолокацией');
 
   geoWatchId = navigator.geolocation.watchPosition(handlePosition, handleGeoError, {
     enableHighAccuracy: true,
@@ -816,46 +1138,98 @@ function stopGeolocation(): void {
   geoActive = false;
   geoFilter.reset();
   currentSpeed = 0;
-  gpsStatEl.hidden = true;
-  geoButton.classList.remove('active');
-  geoButton.setAttribute('aria-pressed', 'false');
-  geoButton.textContent = 'Реальная геолокация';
-  hintEl.textContent = 'Кликните по карте — точка маршрута';
+  renderGpsOff();
+  applyGeoSwitch();
 }
+
+// ——— Кнопки меню ———
 
 geoButton.addEventListener('click', () => {
   if (geoActive) stopGeolocation();
   else startGeolocation();
 });
 
-// ——— Кнопки ———
-
-runButton.addEventListener('click', () => setRunning(!running));
-
-clearButton.addEventListener('click', clearTerritories);
-
 timescaleButton.addEventListener('click', () => {
   timeScale = timeScale === 1 ? 10 : 1;
-  const accelerated = timeScale === 10;
-  timescaleButton.classList.toggle('active', accelerated);
-  timescaleButton.setAttribute('aria-pressed', String(accelerated));
-  timescaleButton.textContent = accelerated ? '×10 вкл' : '×10';
+  applyTimeScale();
+  saveSettings();
 });
 
-resetButton.addEventListener('click', () => {
+unitsMetricButton.addEventListener('click', () => {
+  units = 'metric';
+  applyUnits();
+  saveSettings();
+});
+
+unitsImperialButton.addEventListener('click', () => {
+  units = 'imperial';
+  applyUnits();
+  saveSettings();
+});
+
+clearButton.addEventListener('click', () => {
+  const confirmed = window.confirm(
+    'Сбросить все данные? Территории, очки и рекорд будут удалены без возможности вернуть.',
+  );
+  if (!confirmed) return;
+
   setRunning(false);
+  runSnapshot = null;
   clearWaypoints();
   trail = [];
   distance = 0;
   runTime = 0;
   currentSpeed = 0;
-  bonusAnchorDistance = 0;
   geoFilter.reset();
   geoCentered = false;
+  bestRunDistance = 0;
+
+  clearTerritories(); // обнуляет и очки, и bonusAnchorDistance
   updateTrail();
-  renderScore();
   renderHud();
+  renderScore();
+  saveBestRun();
+
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(BEST_RUN_KEY);
+  } catch {
+    // приватный режим: удалять нечего
+  }
+  showStatus('Все данные сброшены');
 });
+
+// ——— Подсказка первого запуска ———
+
+function setupFirstRunHint(): void {
+  let seen = false;
+  try {
+    seen = localStorage.getItem(HINT_KEY) === '1';
+  } catch {
+    seen = true;
+  }
+  if (seen) return;
+  hintCardEl.hidden = false;
+}
+
+function dismissFirstRunHint(): void {
+  hintCardEl.hidden = true;
+  try {
+    localStorage.setItem(HINT_KEY, '1');
+  } catch {
+    // подсказка просто появится снова
+  }
+}
+
+hintCloseButton.addEventListener('click', dismissFirstRunHint);
+
+// ——— Версия сборки ———
+
+function renderBuildInfo(): void {
+  setText(versionEl, `v${__APP_VERSION__}`);
+  const date = new Date(__BUILD_DATE__);
+  setText(buildDateEl, Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('ru-RU'));
+}
 
 // ——— Цикл симуляции ———
 
@@ -883,11 +1257,21 @@ function tick(now: number): void {
 window.addEventListener('pagehide', () => {
   syncBonus();
   saveState();
+  void releaseWakeLock();
 });
 
 loadState();
+loadSettings();
+loadBestRun();
 for (const territory of territories) addTerritoryLabel(territory);
 renderScore();
 renderTerritoryList();
 renderHud();
+applyUnits();
+applyTimeScale();
+applyGeoSwitch();
+renderGpsOff();
+renderBuildInfo();
+setupFirstRunHint();
+setFollow(true);
 requestAnimationFrame(tick);
