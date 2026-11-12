@@ -1,105 +1,128 @@
 {
-  "generatedAt": "2026-11-12T05:52:40.463Z",
+  "generatedAt": "2026-11-12T16:32:29.352Z",
   "rootDir": "C:\\Users\\ogoly\\Desktop\\Project\\приложение для бега",
-  "totalFiles": 12,
-  "totalDirectories": 3,
+  "totalFiles": 18,
+  "totalDirectories": 5,
   "byExtension": {
-    "[no-ext]": 3,
-    ".md": 3,
-    ".json": 4,
-    ".tsx": 1,
-    ".ts": 1
+    "[no-ext]": 1,
+    ".md": 2,
+    ".html": 1,
+    ".json": 3,
+    ".webmanifest": 1,
+    ".ts": 8,
+    ".css": 1,
+    ".jsonc": 1
   },
   "files": [
     {
       "path": ".gitignore",
-      "bytes": 551,
-      "mtimeMs": 1794462602411.1213
+      "bytes": 581,
+      "mtimeMs": 1794482462834.1797
     },
     {
       "path": "AGENTS.md",
-      "bytes": 2359,
-      "mtimeMs": 1794462760446.6443
+      "bytes": 655,
+      "mtimeMs": 1794482396384.6758
     },
     {
-      "path": "OPENCODE.md",
-      "bytes": 2369,
-      "mtimeMs": 1794462760447.6484
+      "path": "README.md",
+      "bytes": 24,
+      "mtimeMs": 1794482747941.1216
     },
     {
-      "path": "runwave/.claude/settings.json",
-      "bytes": 71,
-      "mtimeMs": 1794457590998.5845
+      "path": "web/index.html",
+      "bytes": 10768,
+      "mtimeMs": 1794499311038.1375
     },
     {
-      "path": "runwave/.gitignore",
-      "bytes": 440,
-      "mtimeMs": 1794457501746.7732
+      "path": "web/package.json",
+      "bytes": 619,
+      "mtimeMs": 1794483944263.9438
     },
     {
-      "path": "runwave/AGENTS.md",
-      "bytes": 2598,
-      "mtimeMs": 1794457444867.1409
+      "path": "web/public/manifest.webmanifest",
+      "bytes": 807,
+      "mtimeMs": 1794483816123.2412
     },
     {
-      "path": "runwave/app.json",
-      "bytes": 704,
-      "mtimeMs": 1794458293476.4526
+      "path": "web/src/gpsFilter.test.ts",
+      "bytes": 6079,
+      "mtimeMs": 1794478759711.4524
     },
     {
-      "path": "runwave/App.tsx",
-      "bytes": 455,
-      "mtimeMs": 1794457501729.115
+      "path": "web/src/gpsFilter.ts",
+      "bytes": 10603,
+      "mtimeMs": 1794478728569.9753
     },
     {
-      "path": "runwave/index.ts",
-      "bytes": 307,
-      "mtimeMs": 1794457501747.2922
+      "path": "web/src/main.ts",
+      "bytes": 41732,
+      "mtimeMs": 1794499760541.4646
     },
     {
-      "path": "runwave/LICENSE",
-      "bytes": 1106,
-      "mtimeMs": 1794457501750.8374
+      "path": "web/src/map/palette.ts",
+      "bytes": 1343,
+      "mtimeMs": 1794499369447.6633
     },
     {
-      "path": "runwave/package.json",
-      "bytes": 1019,
-      "mtimeMs": 1794460520631.697
+      "path": "web/src/map/style.json",
+      "bytes": 20960,
+      "mtimeMs": 1794498961244.4224
     },
     {
-      "path": "runwave/tsconfig.json",
-      "bytes": 85,
-      "mtimeMs": 1794457501748.3247
+      "path": "web/src/map/style.ts",
+      "bytes": 8359,
+      "mtimeMs": 1794499212839.0586
+    },
+    {
+      "path": "web/src/style.css",
+      "bytes": 18505,
+      "mtimeMs": 1794484436025.7595
+    },
+    {
+      "path": "web/src/territory.test.ts",
+      "bytes": 12398,
+      "mtimeMs": 1794480011848.505
+    },
+    {
+      "path": "web/src/territory.ts",
+      "bytes": 22542,
+      "mtimeMs": 1794480247533.1333
+    },
+    {
+      "path": "web/tsconfig.json",
+      "bytes": 518,
+      "mtimeMs": 1794475483060.9424
+    },
+    {
+      "path": "web/vite.config.ts",
+      "bytes": 234,
+      "mtimeMs": 1794483939675.288
+    },
+    {
+      "path": "web/wrangler.jsonc",
+      "bytes": 111,
+      "mtimeMs": 1794483169048.5298
     }
   ],
   "truncated": false,
   "packageScripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": [
-    "@expo/vector-icons",
-    "@react-native-async-storage/async-storage",
-    "@rnmapbox/maps",
-    "@supabase/supabase-js",
-    "@turf/turf",
-    "expo",
-    "expo-constants",
-    "expo-haptics",
-    "expo-linear-gradient",
-    "expo-linking",
-    "expo-location",
-    "expo-router",
-    "expo-status-bar",
-    "react",
-    "react-native",
-    "react-native-safe-area-context",
-    "react-native-screens",
-    "react-native-svg",
-    "react-native-url-polyfill",
-    "@types/react",
-    "typescript"
+    "@turf/area",
+    "@turf/center-of-mass",
+    "@turf/difference",
+    "@turf/length",
+    "@turf/union",
+    "maplibre-gl",
+    "@types/geojson",
+    "typescript",
+    "vite",
+    "vitest"
   ]
 }

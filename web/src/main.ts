@@ -38,6 +38,11 @@ const LABEL_MIN_MARGIN_PX = 8; // зазор между меткой площа�
 const M_PER_MILE = 1609.344;
 const M_PER_FOOT = 0.3048;
 const BUILDINGS_3D_LAYER_ID = 'building-3d';
+const DEFAULT_PITCH = 50; // наклон карты вне бега
+const RUN_PITCH = 45; // наклон в режиме бега
+const HEADING_MIN_STEP = 2; // м, минимальный шаг для пересчёта направления движения
+const FOLLOW_STIFFNESS = 5; // плавность догона камеры за игроком
+const TURN_STIFFNESS = 3; // плавность поворота камеры по направлению движения
 
 type Units = 'metric' | 'imperial';
 
@@ -51,6 +56,7 @@ interface StoredSettings {
   timeScale?: number;
   buildings3d?: boolean;
   lightMap?: boolean;
+  rotateByHeading?: boolean;
 }
 
 function readStoredSettings(): StoredSettings | null {
@@ -72,6 +78,7 @@ const initialSettings = readStoredSettings();
 let buildings3d = initialSettings?.buildings3d === true;
 let lightMap =
   typeof initialSettings?.lightMap === 'boolean' ? initialSettings.lightMap : isWeakDevice();
+let rotateByHeading = initialSettings?.rotateByHeading === true;
 
 function byId<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -97,6 +104,7 @@ const geoButton = byId<HTMLButtonElement>('btn-geo');
 const geoDescEl = byId('geo-desc');
 const buildings3dButton = byId<HTMLButtonElement>('btn-buildings-3d');
 const lightMapButton = byId<HTMLButtonElement>('btn-light-map');
+const rotateHeadingButton = byId<HTMLButtonElement>('btn-rotate-heading');
 const unitsMetricButton = byId<HTMLButtonElement>('btn-units-metric');
 const unitsImperialButton = byId<HTMLButtonElement>('btn-units-imperial');
 const territoriesToggleButton = byId<HTMLButtonElement>('btn-territories');
@@ -125,7 +133,7 @@ const map = new MapLibreMap({
   style: buildMapStyle({ light: lightMap }),
   center: START_POINT,
   zoom: 15.2,
-  pitch: 50,
+  pitch: DEFAULT_PITCH,
   bearing: -18,
   attributionControl: false,
   maxPitch: 70,
@@ -161,10 +169,27 @@ let followPlayer = true;
 let runSnapshot: RunSnapshot | null = null;
 let bestRunDistance = 0;
 
+let travelHeading = 0; // направление движения, градусы от севера
+let pitchTarget: number | null = null; // куда плавно ведём наклон камеры
+
 // ——— Геометрия ———
 
 function lerp(a: LngLat, b: LngLat, t: number): LngLat {
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+}
+
+/** Направление движения по кратчайшей дуге, в градусах от севера. */
+function headingBetween(from: LngLat, to: LngLat): number {
+  const lat1 = (from[1] * Math.PI) / 180;
+  const lat2 = (to[1] * Math.PI) / 180;
+  const dLon = ((to[0] - from[0]) * Math.PI) / 180;
+  const y = Math.sin(dLon) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
+function shortestAngle(from: number, to: number): number {
+  return ((((to - from) % 360) + 540) % 360) - 180;
 }
 
 function lineFeature(points: LngLat[]): Feature<LineString> {
@@ -221,17 +246,21 @@ function applyBuildings3D(): void {
       minzoom: 14,
       filter: ['match', ['geometry-type'], ['MultiPolygon', 'Polygon'], true, false],
       paint: {
+        // Низкие дома темнее, высокие светлее — масса домов читается как объём.
         'fill-extrusion-color': [
           'interpolate',
           ['linear'],
           ['coalesce', ['get', 'render_height'], 0],
           0,
           palette.building.fill,
-          40,
+          10,
           palette.building.extrusion,
-          120,
+          40,
           palette.building.extrusionTop,
+          90,
+          palette.building.extrusionHigh,
         ],
+        'fill-extrusion-vertical-gradient': true,
         'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 8],
         'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
         'fill-extrusion-opacity': 0.9,
@@ -1045,14 +1074,52 @@ function placePlayer(next: LngLat): void {
   playerMarker.setLngLat(next);
 }
 
-function movePlayerTo(next: LngLat, smooth: boolean): void {
+function movePlayerTo(next: LngLat): void {
+  const previous = position;
   placePlayer(next);
-  if (!followPlayer) return;
-  if (smooth) {
-    map.easeTo({ center: next, duration: 700 });
-  } else {
-    map.jumpTo({ center: next });
+  if (distanceMeters(previous, next) >= HEADING_MIN_STEP) {
+    travelHeading = headingBetween(previous, next);
   }
+}
+
+/**
+ * Камера плавно догоняет игрока, в беге держит наклон 45°
+ * и, если включён переключатель, разворачивается по направлению движения.
+ */
+function updateCamera(dt: number): void {
+  if (map.isEasing()) return;
+
+  const turn = 1 - Math.exp(-dt * TURN_STIFFNESS);
+
+  let bearing = map.getBearing();
+  if (running && rotateByHeading) {
+    bearing += shortestAngle(bearing, travelHeading) * turn;
+  }
+
+  let pitch = map.getPitch();
+  if (pitchTarget !== null) {
+    pitch += (pitchTarget - pitch) * turn;
+    if (Math.abs(pitchTarget - pitch) < 0.05) pitchTarget = null;
+  }
+
+  let center: { lng: number; lat: number } | null = null;
+  if (followPlayer) {
+    const current = map.getCenter();
+    const follow = 1 - Math.exp(-dt * FOLLOW_STIFFNESS);
+    const lng = current.lng + (position[0] - current.lng) * follow;
+    const lat = current.lat + (position[1] - current.lat) * follow;
+    if (distanceMeters([lng, lat], position) > 0.4) center = { lng, lat };
+  }
+
+  const bearingMoved = Math.abs(shortestAngle(map.getBearing(), bearing)) > 0.05;
+  const pitchMoved = Math.abs(pitch - map.getPitch()) > 0.05;
+  if (!center && !bearingMoved && !pitchMoved) return;
+
+  map.jumpTo({
+    ...(center ? { center } : {}),
+    ...(bearingMoved ? { bearing } : {}),
+    ...(pitchMoved ? { pitch } : {}),
+  });
 }
 
 function setFollow(value: boolean): void {
@@ -1104,7 +1171,7 @@ function dropWaypoint(): void {
 
 function registerMove(next: LngLat, meters: number): void {
   const previous = position;
-  movePlayerTo(next, false);
+  movePlayerTo(next);
   if (!running) return;
 
   distance += meters;
@@ -1387,3 +1454,6 @@ renderBuildInfo();
 setupFirstRunHint();
 setFollow(true);
 requestAnimationFrame(tick);
+
+// TEMP: screenshot hook, will be removed
+(window as unknown as { __rwMap?: unknown }).__rwMap = map;

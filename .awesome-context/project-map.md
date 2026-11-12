@@ -1,27 +1,29 @@
 # Project Map
 
-Generated at: 2026-11-12T05:52:40.463Z
+Generated at: 2026-11-12T16:32:29.352Z
 
 ## Repository Snapshot
-- Total files: 12
-- Total directories: 3
+- Total files: 18
+- Total directories: 5
 - Truncated scan: no
 
 ## Repository Identity
-- Root package: runwave
+- Root package: runwave-web-prototype
 - README summary: none detected
 - Workspace packages: 1
-- Direct dependencies indexed: 21
+- Direct dependencies indexed: 10
 
 ## Browse First
-- Inspect entrypoint: runwave/App.tsx
-- Inspect entrypoint: runwave/index.ts
-- Browse directory: runwave/ (9 files)
+- Inspect entrypoint: web/src/main.ts
+- Inspect config: web/vite.config.ts
+- Browse directory: web/ (15 files)
 - Browse directory: .gitignore/ (1 files)
 - Browse directory: AGENTS.md/ (1 files)
+- Build command: web#build
+- Test command: web#test
 
 ## Workspace Packages
-- runwave -> runwave
+- web -> runwave-web-prototype
 
 ## Auxiliary Packages
 - none detected
@@ -30,75 +32,77 @@ Generated at: 2026-11-12T05:52:40.463Z
 
 ```text
 .
-├── runwave/
-│   ├── .claude/
-│   │   └── settings.json
-│   ├── assets/
-│   ├── .gitignore
-│   ├── AGENTS.md
-│   ├── app.json
-│   ├── App.tsx
-│   ├── index.ts
-│   ├── LICENSE
+├── web/
+│   ├── public/
+│   │   ├── icons/
+│   │   └── manifest.webmanifest
+│   ├── src/
+│   │   ├── map/
+│   │   ├── gpsFilter.test.ts
+│   │   ├── gpsFilter.ts
+│   │   ├── main.ts
+│   │   ├── style.css
+│   │   ├── territory.test.ts
+│   │   └── territory.ts
+│   ├── index.html
 │   ├── package.json
-│   └── tsconfig.json
+│   ├── tsconfig.json
+│   ├── vite.config.ts
+│   └── wrangler.jsonc
 ├── .gitignore
 ├── AGENTS.md
-└── OPENCODE.md
+└── README.md
 ```
 
 ## Detected Languages
-- JSON: 4
-- Markdown: 3
-- TypeScript: 1
-- TypeScript React: 1
+- TypeScript: 8
+- JSON: 3
+- Markdown: 2
+- CSS: 1
+- HTML: 1
 
 ## Detected Frameworks
-- React
-
-## Package Scripts
-- runwave#android: expo start --android
-- runwave#ios: expo start --ios
-- runwave#start: expo start
-- runwave#web: expo start --web
-
-## Important Config Files
 - none
 
+## Package Scripts
+- web#build: tsc --noEmit && vite build
+- web#dev: vite
+- web#preview: vite preview
+- web#test: vitest run
+- web#typecheck: tsc --noEmit
+
+## Important Config Files
+- web/vite.config.ts
+
 ## Test Commands
-- none detected
+- web#test: vitest run
 
 ## Build Commands
-- none detected
+- web#build: tsc --noEmit && vite build
 
 ## Entrypoints
-- runwave/App.tsx
-- runwave/index.ts
+- web/src/main.ts
 
 ## Auxiliary Entrypoints
 - none detected
 
 ## Key Directories
-- runwave/: 9 files
+- web/: 15 files
 - .gitignore/: 1 files
 - AGENTS.md/: 1 files
-- OPENCODE.md/: 1 files
+- README.md/: 1 files
 
 ## Auxiliary Paths
 - none detected
 
 ## Dependency Highlights
-- @expo/vector-icons
-- @react-native-async-storage/async-storage
-- @rnmapbox/maps
-- @supabase/supabase-js
-- @turf/turf
-- @types/react
-- expo
-- expo-constants
-- expo-haptics
-- expo-linear-gradient
-- expo-linking
-- expo-location
-- expo-router
-- expo-status-bar
+- @turf/area
+- @turf/center-of-mass
+- @turf/difference
+- @turf/length
+- @turf/union
+- @types/geojson
+- maplibre-gl
+- typescript
+- vite
+- vitest
