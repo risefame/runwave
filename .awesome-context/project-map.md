@@ -1,9 +1,9 @@
 # Project Map
 
-Generated at: 2026-11-13T08:52:38.112Z
+Generated at: 2026-11-13T09:37:03.681Z
 
 ## Repository Snapshot
-- Total files: 103
+- Total files: 107
 - Total directories: 98
 - Truncated scan: no
 
@@ -18,7 +18,7 @@ Generated at: 2026-11-13T08:52:38.112Z
 - Inspect config: web/capacitor.config.ts
 - Inspect config: web/vite.config.ts
 - Browse directory: web/ (89 files)
-- Browse directory: supabase/ (9 files)
+- Browse directory: supabase/ (13 files)
 - Browse directory: .github/ (2 files)
 - Build command: web#build
 - Test command: web#test
@@ -42,9 +42,13 @@ Generated at: 2026-11-13T08:52:38.112Z
 │   │   ├── 0001_schema.sql
 │   │   ├── 0002_rls.sql
 │   │   ├── 0003_functions.sql
-│   │   └── 0004_api.sql
+│   │   ├── 0004_api.sql
+│   │   ├── 0005_run_security.sql
+│   │   └── 0006_boundary_arc.sql
 │   ├── tests/
 │   │   ├── 00_auth_stub.sql
+│   │   ├── 0005_security_test.sql
+│   │   ├── 0006_arc_test.sql
 │   │   └── game_test.sql
 │   ├── README.md
 │   ├── seed.sql
@@ -96,10 +100,10 @@ Generated at: 2026-11-13T08:52:38.112Z
 
 ## Detected Languages
 - XML: 13
+- SQL: 12
 - TypeScript: 12
 - JSON: 9
 - JavaScript: 8
-- SQL: 8
 - Markdown: 4
 - Swift: 4
 - CSS: 3
@@ -136,7 +140,7 @@ Generated at: 2026-11-13T08:52:38.112Z
 
 ## Key Directories
 - web/: 89 files
-- supabase/: 9 files
+- supabase/: 13 files
 - .github/: 2 files
 - .gitignore/: 1 files
 - AGENTS.md/: 1 files

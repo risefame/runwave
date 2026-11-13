@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-11-13T08:52:38.112Z",
+  "generatedAt": "2026-11-13T09:37:03.681Z",
   "rootDir": "C:\\Users\\ogoly\\Desktop\\Project\\приложение для бега",
-  "totalFiles": 103,
+  "totalFiles": 107,
   "totalDirectories": 98,
   "byExtension": {
     ".yml": 2,
     "[no-ext]": 10,
     ".md": 4,
-    ".sql": 8,
+    ".sql": 12,
     ".gradle": 8,
     ".pro": 1,
     ".java": 3,
@@ -76,9 +76,19 @@
       "mtimeMs": 1794514951352.048
     },
     {
+      "path": "supabase/migrations/0005_run_security.sql",
+      "bytes": 41953,
+      "mtimeMs": 1794560827198.986
+    },
+    {
+      "path": "supabase/migrations/0006_boundary_arc.sql",
+      "bytes": 20331,
+      "mtimeMs": 1794562404609.1003
+    },
+    {
       "path": "supabase/README.md",
-      "bytes": 4341,
-      "mtimeMs": 1794516189584.017
+      "bytes": 7246,
+      "mtimeMs": 1794562613387.7
     },
     {
       "path": "supabase/seed.sql",
@@ -87,13 +97,23 @@
     },
     {
       "path": "supabase/setup.sql",
-      "bytes": 51015,
-      "mtimeMs": 1794515944104.1426
+      "bytes": 113398,
+      "mtimeMs": 1794562614344.0762
     },
     {
       "path": "supabase/tests/00_auth_stub.sql",
       "bytes": 2093,
       "mtimeMs": 1794513046636.2437
+    },
+    {
+      "path": "supabase/tests/0005_security_test.sql",
+      "bytes": 9801,
+      "mtimeMs": 1794560705553.2349
+    },
+    {
+      "path": "supabase/tests/0006_arc_test.sql",
+      "bytes": 20689,
+      "mtimeMs": 1794562577327.9824
     },
     {
       "path": "supabase/tests/game_test.sql",
@@ -487,8 +507,8 @@
     },
     {
       "path": "web/src/main.ts",
-      "bytes": 88932,
-      "mtimeMs": 1794555376746.4104
+      "bytes": 88965,
+      "mtimeMs": 1794560735443.1392
     },
     {
       "path": "web/src/map/palette.ts",
@@ -507,8 +527,8 @@
     },
     {
       "path": "web/src/online.ts",
-      "bytes": 8260,
-      "mtimeMs": 1794524769290.6343
+      "bytes": 11768,
+      "mtimeMs": 1794562612745.578
     },
     {
       "path": "web/src/style.css",
@@ -517,8 +537,8 @@
     },
     {
       "path": "web/src/supabase.ts",
-      "bytes": 586,
-      "mtimeMs": 1794514788755.837
+      "bytes": 1098,
+      "mtimeMs": 1794560707064.2183
     },
     {
       "path": "web/src/territory.test.ts",

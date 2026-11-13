@@ -102,7 +102,7 @@ export function describeRejection(reason: string | undefined): string {
     case 'ring_not_ordered':
       return 'контур собран не по порядку трека';
     case 'ring_boundary_arc':
-      return 'захват присоединением к своей границе онлайн не засчитывается';
+      return 'дуга от границы своей территории не замкнулась — захват не засчитан';
     case 'ring_untracked':
       return 'контур территории не совпал с треком и не засчитан';
     default:

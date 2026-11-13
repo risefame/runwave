@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-13T09:08:10.516Z",
+  "generatedAt": "2026-11-13T09:39:55.361Z",
   "root": ".",
   "parserVersion": 2,
   "graphVersion": 1,
@@ -51,15 +51,15 @@
       "lastProcessed": "2026-11-13T07:44:55.269Z"
     },
     "supabase/README.md": {
-      "hash": "a72ba2c1730517bdb61a316a0fe64222b3ae792e80e021b63a5ed05678ff4c0e",
-      "size": 4341,
-      "mtimeMs": 1794516189584.017,
+      "hash": "07d80646ce920ad5ae88a709680c053fa6fd14f9ace37964bf449fdd6833896c",
+      "size": 7246,
+      "mtimeMs": 1794562613387.7,
       "language": "markdown",
       "symbols": [],
       "imports": [],
       "exports": [],
       "summary": "Documentation file.",
-      "lastProcessed": "2026-11-13T07:44:55.270Z"
+      "lastProcessed": "2026-11-13T09:37:03.739Z"
     },
     "web/android/app/src/androidTest/java/com/getcapacitor/myapp/ExampleInstrumentedTest.java": {
       "hash": "ff50b4c110a7434312f9af54171f9e8523b015836f707c9b387b76d4c38a97f8",
@@ -447,9 +447,9 @@
       "lastProcessed": "2026-11-13T07:44:55.299Z"
     },
     "web/src/online.ts": {
-      "hash": "5a1283171fc3df6586e85846878fd3acc7478c03bab12c762e9013743e1f1919",
-      "size": 11758,
-      "mtimeMs": 1794560828509.7896,
+      "hash": "0a6aae89fabd7dac45881b0017ef9f25dcf1c76380659ab9fefdd77c4849e314",
+      "size": 11768,
+      "mtimeMs": 1794562612745.578,
       "language": "typescript",
       "symbols": [
         "createClientRunId",
@@ -480,7 +480,7 @@
         "submitRun"
       ],
       "summary": "Defines createClientRunId, describeRejection, ensureAnonymousSession.",
-      "lastProcessed": "2026-11-13T09:08:10.514Z"
+      "lastProcessed": "2026-11-13T09:37:03.740Z"
     },
     "web/src/supabase.ts": {
       "hash": "f3c88f93a94132639e5e90eaa11e17759804e0690bb510f04bd543c4461abf54",
