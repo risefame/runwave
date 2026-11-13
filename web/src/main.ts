@@ -1,5 +1,12 @@
 import { Map as MapLibreMap, Marker, type GeoJSONSource } from 'maplibre-gl';
-import type { Feature, FeatureCollection, LineString, MultiPolygon, Polygon } from 'geojson';
+import type {
+  Feature,
+  FeatureCollection,
+  LineString,
+  MultiPolygon,
+  Point,
+  Polygon,
+} from 'geojson';
 import {
   boundaryCrossing,
   captureTerritory,
@@ -35,17 +42,24 @@ import './style.css';
 declare const __APP_VERSION__: string;
 declare const __BUILD_DATE__: string;
 
-const START_POINT: LngLat = [37.6173, 55.7558]; // Москва
+const WORLD_CENTER: LngLat = [12, 22]; // мировой вид, пока позиция неизвестна
+const WORLD_ZOOM = 1.4;
 const RUN_SPEED = 3; // м/с
 const TRAIL_MIN_STEP = 1.2; // м между точками следа
 const MAX_FRAME_DT = 0.1; // с, защита от скачка после сворачивания вкладки
 const GEO_STALE_MS = 2500;
+const SEGMENT_GAP_MS = 15000; // с, пауза GPS, после которой трек начинается заново
 const DISTANCE_BONUS_PER_METER = 2; // очков за каждый метр дистанции
 const STORAGE_KEY = 'runwave:territories:v2';
+const TEST_STORAGE_KEY = 'runwave:territories:test:v1';
 const SETTINGS_KEY = 'runwave:settings:v1';
 const BEST_RUN_KEY = 'runwave:best-run:v1';
 const HINT_KEY = 'runwave:hint:v1';
+const ACTIVE_RUN_KEY = 'runwave:active-run:v1';
+const LAST_POSITION_KEY = 'runwave:last-position:v1';
+const LAST_POSITION_SAVE_MS = 5000; // как часто запоминаем позицию для следующего запуска
 const FLASH_DURATION_MS = 1100; // мс, анимация вспышки новой территории
+const CAPTURE_BANNER_MS = 2600; // мс, сколько висит плашка захвата
 const LABEL_MIN_MARGIN_PX = 8; // зазор между меткой площади и границей территории, px
 const M_PER_MILE = 1609.344;
 const M_PER_FOOT = 0.3048;
@@ -55,12 +69,26 @@ const RUN_PITCH = 45; // наклон в режиме бега
 const HEADING_MIN_STEP = 2; // м, минимальный шаг для пересчёта направления движения
 const FOLLOW_STIFFNESS = 5; // плавность догона камеры за игроком
 const TURN_STIFFNESS = 3; // плавность поворота камеры по направлению движения
+const PLAYER_STIFFNESS = 9; // плавность движения маркера игрока
+const HEADING_STIFFNESS = 6; // плавность доворота стрелки направления
+const ACCURACY_PULSE_MS = 700; // период пульсации круга точности GPS
 
 type Units = 'metric' | 'imperial';
+
+/** Реальные забеги и тестовая имитация хранятся и считаются раздельно. */
+type GameMode = 'real' | 'test';
 
 interface RunSnapshot {
   area: number;
   score: number;
+}
+
+interface ActiveRunJournal {
+  points: RunPoint[];
+  rings: LngLat[][];
+  distance: number;
+  time: number;
+  savedAt: number;
 }
 
 interface StoredSettings {
@@ -70,6 +98,7 @@ interface StoredSettings {
   lightMap?: boolean;
   rotateByHeading?: boolean;
   online?: boolean;
+  geo?: boolean;
 }
 
 function readStoredSettings(): StoredSettings | null {
@@ -87,12 +116,38 @@ function isWeakDevice(): boolean {
   return (memory !== undefined && memory <= 4) || (cores !== undefined && cores <= 4);
 }
 
+/** Телефоны и планшеты: там реальный GPS включается по умолчанию. */
+function isTouchDevice(): boolean {
+  return (
+    navigator.maxTouchPoints > 0 || window.matchMedia('(hover: none) and (pointer: coarse)').matches
+  );
+}
+
 const initialSettings = readStoredSettings();
 let buildings3d = initialSettings?.buildings3d === true;
 let lightMap =
   typeof initialSettings?.lightMap === 'boolean' ? initialSettings.lightMap : isWeakDevice();
 let rotateByHeading = initialSettings?.rotateByHeading === true;
 let onlineEnabled = initialSettings?.online !== false;
+
+/** Позиция с прошлого запуска: стартовая камера не должна прыгать в Москву. */
+function readLastPosition(): LngLat | null {
+  try {
+    const raw = localStorage.getItem(LAST_POSITION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { lon?: unknown; lat?: unknown } | null;
+    if (!parsed) return null;
+    const lon = Number(parsed.lon);
+    const lat = Number(parsed.lat);
+    if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null;
+    if (Math.abs(lon) > 180 || Math.abs(lat) > 90) return null;
+    return [lon, lat];
+  } catch {
+    return null;
+  }
+}
+
+const savedPosition = readLastPosition();
 
 function byId<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -105,6 +160,7 @@ const timeEl = byId('time');
 const speedEl = byId('speed');
 const speedUnitEl = byId('speed-unit');
 const scoreEl = byId('score');
+const scoreLabelEl = byId('score-label');
 const gpsPillEl = byId('gps-pill');
 const gpsAccuracyEl = byId('gps-accuracy');
 const runButton = byId<HTMLButtonElement>('btn-run');
@@ -125,6 +181,15 @@ const territoriesToggleButton = byId<HTMLButtonElement>('btn-territories');
 const territoriesPanelEl = byId('territories-panel');
 const hintCardEl = byId<HTMLDivElement>('hint-card');
 const hintCloseButton = byId<HTMLButtonElement>('btn-hint-close');
+const runHintEl = byId<HTMLDivElement>('run-hint');
+const runHintStartButton = byId<HTMLButtonElement>('btn-run-hint-start');
+const runHintCancelButton = byId<HTMLButtonElement>('btn-run-hint-cancel');
+const geoHelpEl = byId<HTMLDivElement>('geo-help');
+const geoHelpCloseButton = byId<HTMLButtonElement>('btn-geo-help-close');
+const captureBannerEl = byId<HTMLDivElement>('capture-banner');
+const captureBannerTitleEl = byId('capture-banner-title');
+const captureBannerAreaEl = byId('capture-banner-area');
+const summarySubtitleEl = byId('summary-subtitle');
 const summaryEl = byId<HTMLDivElement>('run-summary');
 const summaryCloseButton = byId<HTMLButtonElement>('btn-summary-close');
 const sumDistanceEl = byId('sum-distance');
@@ -134,6 +199,7 @@ const sumScoreEl = byId('sum-score');
 const statAreaEl = byId('stat-area');
 const statCountEl = byId('stat-count');
 const statBestEl = byId('stat-best');
+const statTestEl = byId<HTMLParagraphElement>('stat-test');
 const versionEl = byId('app-version');
 const buildDateEl = byId('build-date');
 const statusEl = byId('status');
@@ -148,42 +214,67 @@ const onlineNameButton = byId<HTMLButtonElement>('btn-online-name');
 const onlineRefreshButton = byId<HTMLButtonElement>('btn-online-refresh');
 const onlineCityEl = byId('online-city');
 const onlineLeaderboardEl = byId<HTMLOListElement>('online-leaderboard');
+const onlineGoalEl = byId('online-goal');
+const onlineRecoverButton = byId<HTMLButtonElement>('btn-online-recover');
+const sumOnlineEl = byId<HTMLParagraphElement>('sum-online');
+const seasonPillEl = byId<HTMLButtonElement>('season-pill');
+const seasonPillRankEl = byId('season-pill-rank');
+const seasonPillPointsEl = byId('season-pill-points');
+
+const hasSavedPosition = savedPosition !== null;
 
 const map = new MapLibreMap({
   container: 'map',
   style: buildMapStyle({ light: lightMap }),
-  center: START_POINT,
-  zoom: 15.2,
-  pitch: DEFAULT_PITCH,
-  bearing: -18,
+  center: savedPosition ?? [WORLD_CENTER[0], WORLD_CENTER[1]],
+  zoom: hasSavedPosition ? 15.2 : WORLD_ZOOM,
+  pitch: hasSavedPosition ? DEFAULT_PITCH : 0,
+  bearing: hasSavedPosition ? -18 : 0,
   attributionControl: false,
   maxPitch: 70,
 });
 
 const playerEl = document.createElement('div');
-playerEl.className = 'player';
-playerEl.innerHTML = '<span class="player-halo"></span><span class="player-dot"></span>';
+playerEl.className = hasSavedPosition ? 'player' : 'player player--hidden';
+playerEl.innerHTML =
+  '<span class="player-halo"></span><span class="player-arrow"></span><span class="player-dot"></span>';
+const playerArrowEl = (() => {
+  const el = playerEl.querySelector<HTMLSpanElement>('.player-arrow');
+  if (!el) throw new Error('Не найден маркер направления игрока');
+  return el;
+})();
 
 const playerMarker = new Marker({ element: playerEl, anchor: 'center' })
-  .setLngLat(START_POINT)
+  .setLngLat(savedPosition ?? [WORLD_CENTER[0], WORLD_CENTER[1]])
   .addTo(map);
 
 // ——— Состояние ———
 
-let position: LngLat = [START_POINT[0], START_POINT[1]];
+let position: LngLat = savedPosition
+  ? [savedPosition[0], savedPosition[1]]
+  : [WORLD_CENTER[0], WORLD_CENTER[1]];
+let hasPosition = hasSavedPosition;
+let displayPosition: LngLat = [position[0], position[1]];
 let waypoints: LngLat[] = [];
 const waypointMarkers: Marker[] = [];
 let trail: LngLat[] = [];
+let trailSpeeds: number[] = [];
 let running = false;
+let runMode: GameMode = 'real';
 let timeScale = 1;
 let units: Units = 'metric';
 let runTime = 0; // секунды модельного времени
 let distance = 0; // метры
 let currentSpeed = 0; // м/с
-let geoActive = false;
+// На телефоне по умолчанию реальный GPS, на десктопе — имитация кликами.
+let geoActive = typeof initialSettings?.geo === 'boolean' ? initialSettings.geo : isTouchDevice();
 let geoWatchId: number | null = null;
 let geoCentered = false;
 let lastGeoFix = 0;
+let lastGeoErrorAt = 0;
+let accuracyMeters: number | null = null;
+let segmentBreak = false;
+let lastPositionSavedAt = 0;
 const geoFilter = createGpsFilter();
 
 let followPlayer = true;
@@ -191,6 +282,7 @@ let runSnapshot: RunSnapshot | null = null;
 let bestRunDistance = 0;
 
 let travelHeading = 0; // направление движения, градусы от севера
+let displayHeading = 0; // сглаженный угол стрелки игрока
 let pitchTarget: number | null = null; // куда плавно ведём наклон камеры
 
 // ——— Онлайн-состояние ———
@@ -201,10 +293,13 @@ let onlineBusy = false;
 let onlineInitPromise: Promise<void> | null = null;
 let onlineFetchTimer: number | null = null;
 let onlineCityId: string | null = null;
+let onlineCityName: string | null = null;
+let leaderboardRows: LeaderboardRow[] = [];
 let runPoints: RunPoint[] = [];
 let runRings: LngLat[][] = [];
 let lastRunPointTime = 0;
-let runStartedAt = 0;
+let geoPermission: 'unknown' | 'granted' | 'denied' | 'prompt' = 'unknown';
+let activeRunSavedAt = 0;
 
 // ——— Геометрия ———
 
@@ -226,12 +321,22 @@ function shortestAngle(from: number, to: number): number {
   return ((((to - from) % 360) + 540) % 360) - 180;
 }
 
+/** Сколько метров на экране в одном пикселе на данной широте и зуме. */
+function metersPerPixel(lat: number, zoom: number): number {
+  return (156543.03392 * Math.cos((lat * Math.PI) / 180)) / 2 ** zoom;
+}
+
 function lineFeature(points: LngLat[]): Feature<LineString> {
   return {
     type: 'Feature',
     properties: {},
     geometry: { type: 'LineString', coordinates: points },
   };
+}
+
+/** Круг точности GPS: одна точка, радиус слоя считается в пикселях. */
+function emptyPointCollection(): FeatureCollection<Point> {
+  return { type: 'FeatureCollection', features: [] };
 }
 
 function shapeFeature(
@@ -247,10 +352,29 @@ function emptyCollection(): FeatureCollection<TerritoryShape> {
 
 // ——— Источники и слои карты ———
 
+/** След режется на отрезки: у каждого своя скорость — по ней красится линия. */
+function trailCollection(): FeatureCollection<LineString> {
+  const features: Feature<LineString>[] = [];
+  for (let index = 1; index < trail.length; index += 1) {
+    features.push({
+      type: 'Feature',
+      properties: { speed: trailSpeeds[index] ?? 0 },
+      geometry: { type: 'LineString', coordinates: [trail[index - 1], trail[index]] },
+    });
+  }
+  return { type: 'FeatureCollection', features };
+}
+
 function updateTrail(): void {
   const source = map.getSource('trail') as GeoJSONSource | undefined;
   if (!source) return;
-  source.setData(lineFeature(trail.length > 1 ? trail : []));
+  source.setData(trailCollection());
+}
+
+function resetTrail(): void {
+  trail = [];
+  trailSpeeds = [];
+  updateTrail();
 }
 
 function updateRoute(): void {
@@ -325,7 +449,13 @@ function addOverlayLayers(): void {
       type: 'fill',
       source: 'territories',
       paint: {
-        'fill-color': palette.overlay.territory,
+        // Тестовые территории из имитации — другим цветом, чтобы не путать с реальными.
+        'fill-color': [
+          'case',
+          ['==', ['get', 'test'], 1],
+          palette.overlay.territoryTest,
+          palette.overlay.territory,
+        ],
         'fill-opacity': 0.24,
       },
     });
@@ -337,7 +467,12 @@ function addOverlayLayers(): void {
       source: 'territories',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': palette.overlay.territory,
+        'line-color': [
+          'case',
+          ['==', ['get', 'test'], 1],
+          palette.overlay.territoryTest,
+          palette.overlay.territory,
+        ],
         'line-width': 12,
         'line-blur': 14,
         'line-opacity': 0.55,
@@ -351,7 +486,12 @@ function addOverlayLayers(): void {
       source: 'territories',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': palette.overlay.territoryOutline,
+        'line-color': [
+          'case',
+          ['==', ['get', 'test'], 1],
+          palette.overlay.territoryTestOutline,
+          palette.overlay.territoryOutline,
+        ],
         'line-width': 2,
         'line-opacity': 0.9,
       },
@@ -387,8 +527,28 @@ function addOverlayLayers(): void {
     });
   }
 
+  // Круг точности GPS: полупрозрачный, пульсирует, радиус — в метрах точности.
+  if (!map.getSource('gps-accuracy')) {
+    map.addSource('gps-accuracy', { type: 'geojson', data: emptyPointCollection() });
+  }
+  if (!map.getLayer('gps-accuracy-circle')) {
+    map.addLayer({
+      id: 'gps-accuracy-circle',
+      type: 'circle',
+      source: 'gps-accuracy',
+      paint: {
+        'circle-color': palette.overlay.accuracy,
+        'circle-opacity': 0.1,
+        'circle-radius': 24,
+        'circle-stroke-color': palette.overlay.accuracy,
+        'circle-stroke-width': 1.5,
+        'circle-stroke-opacity': 0.4,
+      },
+    });
+  }
+
   if (!map.getSource('trail')) {
-    map.addSource('trail', { type: 'geojson', data: lineFeature([]) });
+    map.addSource('trail', { type: 'geojson', data: trailCollection() });
   }
   if (!map.getLayer('trail-glow')) {
     map.addLayer({
@@ -411,8 +571,21 @@ function addOverlayLayers(): void {
       source: 'trail',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': palette.overlay.trailCore,
-        'line-width': 3.5,
+        // Цвет по скорости: медленнее — холоднее, быстрее — ярче.
+        'line-color': [
+          'interpolate',
+          ['linear'],
+          ['get', 'speed'],
+          0,
+          palette.overlay.trailCold,
+          2,
+          palette.overlay.trail,
+          4,
+          palette.overlay.trailFast,
+          6,
+          '#ffffff',
+        ],
+        'line-width': ['interpolate', ['linear'], ['get', 'speed'], 0, 2.6, 6, 4.6],
         'line-blur': 0.8,
         'line-opacity': 0.95,
       },
@@ -499,11 +672,24 @@ interface StoredState {
   bonusSaved: number;
 }
 
-let territories: TerritoryRecord[] = [];
-let bonusSaved = 0; // очки за дистанцию, уже попавшие в сохранение
-let bonusAnchorDistance = 0; // дистанция на момент последней синхронизации бонуса
+interface GameBucket {
+  territories: TerritoryRecord[];
+  bonusSaved: number; // очки за дистанцию, уже попавшие в сохранение
+  bonusAnchorDistance: number; // дистанция на момент последней синхронизации бонуса
+  labels: TerritoryLabel[];
+}
+
+const buckets: Record<GameMode, GameBucket> = {
+  real: { territories: [], bonusSaved: 0, bonusAnchorDistance: 0, labels: [] },
+  test: { territories: [], bonusSaved: 0, bonusAnchorDistance: 0, labels: [] },
+};
+
+/** Текущий режим: в беге он фиксируется на старте, вне бега зависит от GPS. */
+function currentMode(): GameMode {
+  return running ? runMode : geoActive ? 'real' : 'test';
+}
+
 let flash: { shape: TerritoryShape; startedAt: number } | null = null;
-const territoryLabels: TerritoryLabel[] = [];
 
 function isLngLat(value: unknown): value is LngLat {
   return (
@@ -561,21 +747,27 @@ function isTerritoryRecord(value: unknown): value is TerritoryRecord {
   );
 }
 
-function totalArea(): number {
-  return territories.reduce((sum, territory) => sum + territory.area, 0);
+function totalArea(mode: GameMode): number {
+  return buckets[mode].territories.reduce((sum, territory) => sum + territory.area, 0);
 }
 
-function currentDistanceBonus(): number {
-  return Math.round(bonusSaved + (distance - bonusAnchorDistance) * DISTANCE_BONUS_PER_METER);
+/** Бонус за дистанцию: в текущем режиме он ещё растёт, в другом — уже сохранён. */
+function distanceBonus(mode: GameMode): number {
+  const bucket = buckets[mode];
+  const live =
+    mode === currentMode() ? Math.max(0, distance - bucket.bonusAnchorDistance) : 0;
+  return Math.round(bucket.bonusSaved + live * DISTANCE_BONUS_PER_METER);
 }
 
-function totalScore(): number {
-  return Math.round(totalArea() + currentDistanceBonus());
+function totalScore(mode: GameMode): number {
+  return Math.round(totalArea(mode) + distanceBonus(mode));
 }
 
-function syncBonus(): void {
-  bonusSaved = currentDistanceBonus();
-  bonusAnchorDistance = distance;
+function syncBonus(mode: GameMode): void {
+  const bucket = buckets[mode];
+  const gained = Math.max(0, distance - bucket.bonusAnchorDistance) * DISTANCE_BONUS_PER_METER;
+  bucket.bonusSaved = Math.round(bucket.bonusSaved + gained);
+  bucket.bonusAnchorDistance = distance;
 }
 
 function formatArea(squareMeters: number): string {
@@ -586,12 +778,20 @@ function formatPerimeter(meters: number): string {
   return `${Math.round(meters).toLocaleString('ru-RU')} м`;
 }
 
+function territoryFeatures(mode: GameMode): Feature<TerritoryShape>[] {
+  return buckets[mode].territories.map((territory) =>
+    shapeFeature(territory.shape, {
+      area: Math.round(territory.area),
+      test: mode === 'test' ? 1 : 0,
+    }),
+  );
+}
+
+/** На карте видны и реальные, и тестовые территории — тестовые помечены цветом. */
 function territoryCollection(): FeatureCollection<TerritoryShape> {
   return {
     type: 'FeatureCollection',
-    features: territories.map((territory) =>
-      shapeFeature(territory.shape, { area: Math.round(territory.area) }),
-    ),
+    features: [...territoryFeatures('real'), ...territoryFeatures('test')],
   };
 }
 
@@ -636,17 +836,18 @@ interface TerritoryLabel {
 }
 
 /** Метка площади — в центре тяжести территории. */
-function addTerritoryLabel(territory: TerritoryRecord): void {
+function addTerritoryLabel(territory: TerritoryRecord, mode: GameMode): void {
   const element = document.createElement('div');
-  element.className = 'territory-label';
-  element.textContent = formatArea(territory.area);
+  element.className = mode === 'test' ? 'territory-label territory-label--test' : 'territory-label';
+  element.textContent =
+    mode === 'test' ? `${formatArea(territory.area)} · тест` : formatArea(territory.area);
 
   const marker = new Marker({ element, anchor: 'center' })
     .setLngLat(territory.centroid)
     .addTo(map);
 
   const label: TerritoryLabel = { marker, element, shape: territory.shape };
-  territoryLabels.push(label);
+  buckets[mode].labels.push(label);
   fitLabel(label);
 }
 
@@ -678,30 +879,47 @@ function fitLabel(label: TerritoryLabel): void {
 }
 
 function updateLabelVisibility(): void {
-  for (const label of territoryLabels) fitLabel(label);
+  for (const mode of ['real', 'test'] as const) {
+    for (const label of buckets[mode].labels) fitLabel(label);
+  }
 }
 
 map.on('moveend', updateLabelVisibility);
 map.on('resize', updateLabelVisibility);
 
 function renderScore(): void {
-  setText(scoreEl, formatScore(totalScore()));
+  const mode = currentMode();
+  setText(scoreEl, formatScore(totalScore(mode)));
+  setText(scoreLabelEl, mode === 'test' ? 'Очки · тест' : 'Очки');
   renderMenuStats();
 }
 
 function renderMenuStats(): void {
-  setText(statAreaEl, formatArea(totalArea()));
-  setText(statCountEl, String(territories.length));
+  // Реальная статистика: тестовые забеги и территории в неё не попадают.
+  setText(statAreaEl, formatArea(totalArea('real')));
+  setText(statCountEl, String(buckets.real.territories.length));
   setText(statBestEl, bestRunDistance > 0 ? formatDistance(bestRunDistance) : '—');
+
+  const testArea = totalArea('test');
+  const testCount = buckets.test.territories.length;
+  statTestEl.hidden = testArea <= 0 && testCount === 0;
+  if (!statTestEl.hidden) {
+    setText(statTestEl, `Тест: ${formatArea(testArea)} · территорий ${testCount}`);
+  }
 }
 
 function renderTerritoryList(): void {
   territoryListEl.replaceChildren();
 
-  for (let index = territories.length - 1; index >= 0; index -= 1) {
-    const territory = territories[index];
+  const entries = [
+    ...buckets.real.territories.map((territory, index) => ({ territory, index, test: false })),
+    ...buckets.test.territories.map((territory, index) => ({ territory, index, test: true })),
+  ];
+
+  for (let position = entries.length - 1; position >= 0; position -= 1) {
+    const { territory, index, test } = entries[position];
     const item = document.createElement('li');
-    item.className = 'territory-item';
+    item.className = test ? 'territory-item territory-item--test' : 'territory-item';
 
     const badge = document.createElement('span');
     badge.className = 'territory-index';
@@ -719,41 +937,75 @@ function renderTerritoryList(): void {
     perimeter.textContent = `периметр ${formatPerimeter(territory.perimeter)}`;
 
     meta.append(area, perimeter);
+
+    if (test) {
+      const testBadge = document.createElement('span');
+      testBadge.className = 'territory-test';
+      testBadge.textContent = 'тест';
+      meta.append(testBadge);
+    }
+
     item.append(badge, meta);
     territoryListEl.append(item);
   }
 
-  setText(territoryCountEl, String(territories.length));
-  territoryEmptyEl.hidden = territories.length > 0;
+  setText(territoryCountEl, String(entries.length));
+  territoryEmptyEl.hidden = entries.length > 0;
 }
 
-function saveState(): void {
+function saveBucket(mode: GameMode, key: string): void {
+  const bucket = buckets[mode];
+  // Пустой тестовый режим не держим в хранилище.
+  if (mode === 'test' && bucket.territories.length === 0 && bucket.bonusSaved === 0) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // приватный режим: удалять нечего
+    }
+    return;
+  }
+
   try {
-    const state: StoredState = { version: 2, territories, bonusSaved };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const state: StoredState = {
+      version: 2,
+      territories: bucket.territories,
+      bonusSaved: bucket.bonusSaved,
+    };
+    localStorage.setItem(key, JSON.stringify(state));
   } catch {
     // приватный режим или переполнение хранилища: территории просто не переживут перезагрузку
   }
 }
 
-function loadState(): void {
+function saveState(): void {
+  saveBucket('real', STORAGE_KEY);
+  saveBucket('test', TEST_STORAGE_KEY);
+}
+
+function loadBucket(mode: GameMode, key: string): void {
+  const bucket = buckets[mode];
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return;
 
     const parsed = JSON.parse(raw) as Partial<StoredState> | null;
     if (!parsed) return;
 
     if (Array.isArray(parsed.territories)) {
-      territories = parsed.territories.filter(isTerritoryRecord);
+      bucket.territories = parsed.territories.filter(isTerritoryRecord);
     }
     if (typeof parsed.bonusSaved === 'number' && Number.isFinite(parsed.bonusSaved)) {
-      bonusSaved = Math.max(0, Math.round(parsed.bonusSaved));
+      bucket.bonusSaved = Math.max(0, Math.round(parsed.bonusSaved));
     }
   } catch {
-    territories = [];
-    bonusSaved = 0;
+    bucket.territories = [];
+    bucket.bonusSaved = 0;
   }
+}
+
+function loadState(): void {
+  loadBucket('real', STORAGE_KEY);
+  loadBucket('test', TEST_STORAGE_KEY);
 }
 
 function loadSettings(): void {
@@ -774,6 +1026,7 @@ function saveSettings(): void {
         lightMap,
         rotateByHeading,
         online: onlineEnabled,
+        geo: geoActive,
       } satisfies StoredSettings),
     );
   } catch {
@@ -802,15 +1055,17 @@ function saveBestRun(): void {
   }
 }
 
-function ownedShapes(): TerritoryShape[] {
-  return territories.map((territory) => territory.shape);
+function ownedShapes(mode: GameMode): TerritoryShape[] {
+  return buckets[mode].territories.map((territory) => territory.shape);
 }
 
 /** Размещает замкнутый контур: в очки идёт только новая площадь. */
 function commitCapture(ring: LngLat[]): boolean {
+  const mode = currentMode();
+  const bucket = buckets[mode];
   // В очки идёт только площадь, которой у игрока ещё не было: свои территории
   // объединяются, и их площадь вычитается из нового контура.
-  const captured = captureTerritory(ring, ownedShapes(), {
+  const captured = captureTerritory(ring, ownedShapes(mode), {
     minArea: MIN_AREA_M2,
     minPerimeter: MIN_PERIMETER_M,
   });
@@ -819,13 +1074,13 @@ function commitCapture(ring: LngLat[]): boolean {
 
   const territory: TerritoryRecord = {
     ...captured,
-    id: `territory-${Date.now()}-${territories.length + 1}`,
+    id: `territory-${Date.now()}-${bucket.territories.length + 1}`,
     capturedAt: Date.now(),
   };
 
-  territories.push(territory);
-  syncBonus();
-  addTerritoryLabel(territory);
+  bucket.territories.push(territory);
+  syncBonus(mode);
+  addTerritoryLabel(territory, mode);
   updateTerritories();
 
   flash = { shape: captured.shape, startedAt: performance.now() };
@@ -834,15 +1089,21 @@ function commitCapture(ring: LngLat[]): boolean {
   renderScore();
   renderTerritoryList();
   saveState();
-  showStatus(`Территория захвачена: +${formatArea(captured.area)}`);
 
-  if (running && onlineEnabled) {
+  const testMark = mode === 'test' ? ' (тест)' : '';
+  showCaptureBanner(captured.area, mode);
+  playCaptureSound();
+  showStatus(`Территория захвачена${testMark}: +${formatArea(captured.area)}`);
+  if ('vibrate' in navigator) navigator.vibrate(30);
+
+  // Тестовые забеги не уходят в онлайн и не смешиваются с реальными.
+  if (running && onlineEnabled && mode === 'real') {
     runRings.push(ring.map(([lon, lat]) => [lon, lat] as LngLat));
+    saveActiveRun(true);
   }
 
   // След сброшен: новый начнётся при выходе за границу уже обновлённой территории.
-  trail = [];
-  updateTrail();
+  resetTrail();
   return true;
 }
 
@@ -852,7 +1113,7 @@ function commitCapture(ring: LngLat[]): boolean {
  * затем старые способы: возврат к началу и пересечение своего следа.
  */
 function tryCaptureTerritory(): boolean {
-  const owned = ownedShapes();
+  const owned = ownedShapes(currentMode());
 
   const boundaryClosure = findBoundaryClosure(trail, owned);
   if (boundaryClosure && commitCapture(boundaryClosure.ring)) return true;
@@ -867,7 +1128,7 @@ function tryCaptureTerritory(): boolean {
  * отбрасывается, чтобы шум GPS у границы не давал ложных захватов.
  */
 function advanceTrail(previous: LngLat, next: LngLat): void {
-  const owned = ownedShapes();
+  const owned = ownedShapes(currentMode());
   const hasTerritory = owned.length > 0;
   const inside = hasTerritory && isInsideTerritory(next, owned);
 
@@ -877,6 +1138,7 @@ function advanceTrail(previous: LngLat, next: LngLat): void {
     // Точка выхода — пересечение шага с границей: след начинается ровно на ней.
     const start = (hasTerritory && boundaryCrossing(previous, next, owned)) || next;
     trail = [[start[0], start[1]]];
+    trailSpeeds = [currentSpeed];
     updateTrail();
     return;
   }
@@ -885,25 +1147,24 @@ function advanceTrail(previous: LngLat, next: LngLat): void {
   if (distanceMeters(tail, next) < TRAIL_MIN_STEP) return;
 
   trail.push([next[0], next[1]]);
+  trailSpeeds.push(currentSpeed);
   updateTrail();
 
   if (tryCaptureTerritory()) return;
 
   // Вернулись внутрь, но захват не засчитан: дуга была слишком короткой.
-  if (inside) {
-    trail = [];
-    updateTrail();
-  }
+  if (inside) resetTrail();
 }
 
-function clearTerritories(): void {
-  territories = [];
-  bonusSaved = 0;
-  bonusAnchorDistance = distance;
+function clearTerritories(mode: GameMode): void {
+  const bucket = buckets[mode];
+  bucket.territories = [];
+  bucket.bonusSaved = 0;
+  bucket.bonusAnchorDistance = distance;
   flash = null;
 
-  for (const label of territoryLabels) label.marker.remove();
-  territoryLabels.length = 0;
+  for (const label of bucket.labels) label.marker.remove();
+  bucket.labels.length = 0;
 
   updateTerritories();
   updateFlashSource();
@@ -921,6 +1182,62 @@ function showStatus(message: string): void {
   statusEl.classList.add('visible');
   window.clearTimeout(statusTimer);
   statusTimer = window.setTimeout(() => statusEl.classList.remove('visible'), 4500);
+}
+
+// ——— Эффект захвата: плашка и звук ———
+
+let captureBannerTimer: number | undefined;
+
+function showCaptureBanner(area: number, mode: GameMode): void {
+  captureBannerTitleEl.textContent =
+    mode === 'test' ? 'Территория захвачена · тест' : 'Территория захвачена';
+  captureBannerAreaEl.textContent = `+${formatArea(area)}`;
+  captureBannerEl.hidden = false;
+  captureBannerEl.classList.remove('visible');
+  // Перезапуск анимации, если захваты идут подряд.
+  void captureBannerEl.offsetWidth;
+  captureBannerEl.classList.add('visible');
+
+  window.clearTimeout(captureBannerTimer);
+  captureBannerTimer = window.setTimeout(() => {
+    captureBannerEl.classList.remove('visible');
+    captureBannerEl.hidden = true;
+  }, CAPTURE_BANNER_MS);
+}
+
+// Звук создаётся только после нажатия «Старт бега»: иначе iOS его блокирует.
+let audioContext: AudioContext | null = null;
+
+function unlockAudio(): void {
+  try {
+    const AudioCtor =
+      window.AudioContext ??
+      (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtor) return;
+    audioContext ??= new AudioCtor();
+    void audioContext.resume();
+  } catch {
+    audioContext = null;
+  }
+}
+
+function playCaptureSound(): void {
+  const context = audioContext;
+  if (!context || context.state !== 'running') return;
+
+  const start = context.currentTime;
+  const oscillator = context.createOscillator();
+  const gain = context.createGain();
+  oscillator.type = 'triangle';
+  oscillator.frequency.setValueAtTime(660, start);
+  oscillator.frequency.exponentialRampToValueAtTime(1180, start + 0.16);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(0.16, start + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.32);
+  oscillator.connect(gain);
+  gain.connect(context.destination);
+  oscillator.start(start);
+  oscillator.stop(start + 0.34);
 }
 
 function setText(element: HTMLElement, text: string): void {
@@ -980,8 +1297,8 @@ function applyTimeScale(): void {
 function applyGeoSwitch(): void {
   geoButton.setAttribute('aria-checked', String(geoActive));
   geoDescEl.textContent = geoActive
-    ? 'Вкл.: GPS телефона'
-    : 'Выкл.: имитация кликами по карте';
+    ? 'Вкл.: GPS телефона. Не блокируй экран.'
+    : 'Выкл.: имитация кликами, данные помечаются «тест»';
 }
 
 function applyMapSettings(): void {
@@ -996,8 +1313,80 @@ function setOnlineStatus(text: string): void {
   onlineStatusEl.textContent = text;
 }
 
+function saveActiveRun(force = false): void {
+  // В журнал для онлайна попадают только реальные забеги.
+  if (!running || !onlineEnabled || currentMode() !== 'real') return;
+
+  const now = Date.now();
+  if (!force && now - activeRunSavedAt < 3000) return;
+  activeRunSavedAt = now;
+
+  const journal: ActiveRunJournal = {
+    points: runPoints,
+    rings: runRings,
+    distance,
+    time: runTime,
+    savedAt: now,
+  };
+
+  try {
+    localStorage.setItem(ACTIVE_RUN_KEY, JSON.stringify(journal));
+  } catch {
+    // приватный режим — восстановление недоступно
+  }
+}
+
+function readActiveRun(): ActiveRunJournal | null {
+  try {
+    const raw = localStorage.getItem(ACTIVE_RUN_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<ActiveRunJournal> | null;
+    if (!parsed || !Array.isArray(parsed.points) || parsed.points.length < 2) return null;
+    if (!Array.isArray(parsed.rings)) return null;
+
+    return {
+      points: parsed.points.filter(
+        (point): point is RunPoint =>
+          typeof point === 'object' &&
+          point !== null &&
+          Number.isFinite(point.lon) &&
+          Number.isFinite(point.lat) &&
+          Number.isFinite(point.t) &&
+          Number.isFinite(point.accuracy),
+      ),
+      rings: parsed.rings,
+      distance: Number(parsed.distance ?? 0),
+      time: Number(parsed.time ?? 0),
+      savedAt: Number(parsed.savedAt ?? 0),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function clearActiveRun(): void {
+  try {
+    localStorage.removeItem(ACTIVE_RUN_KEY);
+  } catch {
+    // ignore
+  }
+  onlineRecoverButton.hidden = true;
+}
+
+function restoreActiveRunButton(): void {
+  const journal = readActiveRun();
+  if (!journal || !onlineEnabled || !onlineReady) {
+    onlineRecoverButton.hidden = true;
+    return;
+  }
+
+  onlineRecoverButton.hidden = false;
+  onlineRecoverButton.textContent = `Отправить сохранённый забег (${formatDistance(journal.distance)})`;
+}
+
 function setOnlineCity(city: CityInfo): void {
   onlineCityId = city.cityId;
+  onlineCityName = city.cityName;
 
   if (!city.cityId) {
     onlineCityEl.textContent = 'Город: не определён — общий рейтинг';
@@ -1008,7 +1397,49 @@ function setOnlineCity(city: CityInfo): void {
   onlineCityEl.textContent = `Город: ${city.cityName ?? '—'}${district}`;
 }
 
+function updateSeasonHud(): void {
+  if (!onlineEnabled || !onlineReady || leaderboardRows.length === 0) {
+    seasonPillEl.hidden = true;
+    onlineGoalEl.textContent =
+      onlineEnabled && onlineReady ? 'Пробеги забег — и попадёшь в рейтинг.' : '';
+    return;
+  }
+
+  const leader = leaderboardRows[0];
+  const me = onlineUserId
+    ? leaderboardRows.find((row) => row.userId === onlineUserId)
+    : undefined;
+
+  seasonPillEl.hidden = false;
+
+  if (me) {
+    seasonPillRankEl.textContent = `#${me.rank}`;
+    seasonPillPointsEl.textContent = `${formatScore(me.points)} очк.`;
+    seasonPillEl.title = `${onlineCityName ?? 'Сезон'} · место ${me.rank} из ${leaderboardRows.length}`;
+
+    if (me.rank === 1) {
+      onlineGoalEl.textContent = `Ты первый${onlineCityName ? ` в ${onlineCityName}` : ''}. Держи темп!`;
+    } else {
+      const third = leaderboardRows.find((row) => row.rank === 3);
+      const target = me.rank <= 3 ? leader : third ?? leader;
+      const gap = Math.max(0, target.points - me.points);
+      onlineGoalEl.textContent =
+        me.rank <= 3
+          ? `До 1-го места: ${formatScore(gap)} очков.`
+          : `До топ-3: ${formatScore(gap)} очков.`;
+    }
+  } else {
+    seasonPillRankEl.textContent = '—';
+    seasonPillPointsEl.textContent = 'Сезон';
+    seasonPillEl.title = onlineCityName ? `Сезон · ${onlineCityName}` : 'Сезон';
+    onlineGoalEl.textContent = leader
+      ? `Лидер: ${leader.displayName} — ${formatScore(leader.points)} очков.`
+      : '';
+  }
+}
+
 function renderOnlineLeaderboard(rows: LeaderboardRow[]): void {
+  leaderboardRows = rows;
   onlineLeaderboardEl.replaceChildren();
 
   if (rows.length === 0) {
@@ -1018,12 +1449,14 @@ function renderOnlineLeaderboard(rows: LeaderboardRow[]): void {
       ? 'Пока нет результатов. Пробеги забег — и попадёшь в рейтинг.'
       : 'Онлайн выключен.';
     onlineLeaderboardEl.append(empty);
+    updateSeasonHud();
     return;
   }
 
-  for (const row of rows) {
+  for (const row of rows.slice(0, 12)) {
     const item = document.createElement('li');
     item.className = 'online-row';
+    if (row.rank <= 3) item.classList.add('online-row--top');
     if (onlineUserId !== null && row.userId === onlineUserId) {
       item.classList.add('online-row--me');
     }
@@ -1044,6 +1477,8 @@ function renderOnlineLeaderboard(rows: LeaderboardRow[]): void {
     item.append(rank, name, points);
     onlineLeaderboardEl.append(item);
   }
+
+  updateSeasonHud();
 }
 
 async function refreshOnlineTerritories(): Promise<string | null> {
@@ -1127,6 +1562,7 @@ async function initOnline(): Promise<void> {
       setOnlineStatus(territoriesError ?? leaderboardError ?? 'Онлайн недоступен');
     } else {
       setOnlineStatus(`Онлайн: ${name}`);
+      restoreActiveRunButton();
     }
   })().finally(() => {
     onlineInitPromise = null;
@@ -1142,8 +1578,12 @@ function applyOnline(): void {
   if (!onlineEnabled) {
     onlineReady = false;
     onlineUserId = null;
+    leaderboardRows = [];
     setOnlineStatus('Офлайн: только локальная игра');
     onlineCityEl.textContent = 'Город: —';
+    onlineGoalEl.textContent = '';
+    seasonPillEl.hidden = true;
+    onlineRecoverButton.hidden = true;
     renderOnlineLeaderboard([]);
     const source = map.getSource('online-territories') as GeoJSONSource | undefined;
     source?.setData(emptyCollection());
@@ -1174,13 +1614,14 @@ function refreshOnlineNow(): void {
 }
 
 function pushRunPoint(lon: number, lat: number, t: number, accuracy: number): void {
-  if (!running || !onlineEnabled || !onlineReady) return;
+  if (!running || !onlineEnabled || !onlineReady || currentMode() !== 'real') return;
   if (!Number.isFinite(lon) || !Number.isFinite(lat) || !Number.isFinite(t)) return;
   if (t <= lastRunPointTime) return;
   if (runPoints.length >= 10_000) return;
 
   runPoints.push({ lon, lat, t, accuracy });
   lastRunPointTime = t;
+  saveActiveRun();
 }
 
 function rejectionText(reason: string | undefined): string {
@@ -1202,8 +1643,8 @@ function rejectionText(reason: string | undefined): string {
   }
 }
 
-async function submitOnlineRun(points: RunPoint[], rings: LngLat[][]): Promise<void> {
-  if (!onlineEnabled || !onlineReady || onlineBusy) return;
+async function submitOnlineRun(points: RunPoint[], rings: LngLat[][]): Promise<boolean> {
+  if (!onlineEnabled || !onlineReady || onlineBusy) return false;
 
   onlineBusy = true;
   setOnlineStatus('Отправка забега…');
@@ -1217,15 +1658,23 @@ async function submitOnlineRun(points: RunPoint[], rings: LngLat[][]): Promise<v
   if (error) {
     setOnlineStatus(error);
     showStatus(`Онлайн: ${error}`);
-    return;
+    if (!summaryEl.hidden) {
+      sumOnlineEl.textContent = 'Онлайн: забег не отправлен — проверь связь';
+      sumOnlineEl.hidden = false;
+    }
+    return false;
   }
-  if (!result) return;
+  if (!result) return false;
 
   if (result.status === 'rejected') {
     const message = rejectionText(result.reason);
     setOnlineStatus(`Забег не засчитан: ${message}`);
     showStatus(`Онлайн: ${message}`);
-    return;
+    if (!summaryEl.hidden) {
+      sumOnlineEl.textContent = `Онлайн: забег не засчитан — ${message}`;
+      sumOnlineEl.hidden = false;
+    }
+    return true;
   }
 
   if (result.cityId) {
@@ -1234,11 +1683,24 @@ async function submitOnlineRun(points: RunPoint[], rings: LngLat[][]): Promise<v
     if (city) setOnlineCity(city);
   }
 
+  await refreshLeaderboard();
+
   const pointsText = result.pointsAwarded ?? 0;
-  setOnlineStatus(`Онлайн: +${pointsText} очков`);
+  const me = onlineUserId
+    ? leaderboardRows.find((row) => row.userId === onlineUserId)
+    : undefined;
+  const rankText = me ? ` · место #${me.rank}` : '';
+  const summaryText = `Онлайн: +${pointsText} очков${rankText}`;
+
+  setOnlineStatus(summaryText);
   showStatus(`Онлайн: +${pointsText} очков, ${formatArea(result.areaM2 ?? 0)}`);
+  if (!summaryEl.hidden) {
+    sumOnlineEl.textContent = summaryText;
+    sumOnlineEl.hidden = false;
+  }
+  sumOnlineEl.hidden = false;
   scheduleOnlineTerritories(0);
-  void refreshLeaderboard();
+  return true;
 }
 
 async function saveOnlineName(): Promise<void> {
@@ -1305,16 +1767,27 @@ territoriesToggleButton.addEventListener('click', () => {
 
 // ——— Итог бега ———
 
-function showRunSummary(summary: {
-  distance: number;
-  time: number;
-  area: number;
-  score: number;
-}): void {
+function showRunSummary(
+  summary: {
+    distance: number;
+    time: number;
+    area: number;
+    score: number;
+  },
+  mode: GameMode,
+): void {
   setText(sumDistanceEl, formatDistance(summary.distance));
   setText(sumTimeEl, formatTime(summary.time));
   setText(sumAreaEl, formatArea(summary.area));
   setText(sumScoreEl, `+${formatScore(summary.score)}`);
+  setText(
+    summarySubtitleEl,
+    mode === 'test'
+      ? 'Тестовый забег: не идёт в реальную статистику'
+      : 'Хорошая работа',
+  );
+  sumOnlineEl.hidden = true;
+  sumOnlineEl.textContent = '';
   summaryEl.hidden = false;
   summaryCloseButton.focus({ preventScroll: true });
 }
@@ -1372,7 +1845,29 @@ async function releaseWakeLock(): Promise<void> {
 }
 
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && running) void requestWakeLock();
+  if (document.visibilityState === 'hidden') {
+    if (running) {
+      saveActiveRun(true);
+      // Экран погас или вкладка ушла в фон: следующий трек начнётся заново.
+      breakSegment();
+    }
+    return;
+  }
+
+  if (!running) {
+    if (geoActive && geoWatchId === null) restartGeoWatch();
+    return;
+  }
+
+  void requestWakeLock();
+  breakSegment('GPS был на паузе, трек продолжен');
+
+  // После сна/свёрнутого приложения GPS-подписка могла остановиться.
+  if (geoActive) restartGeoWatch();
+});
+
+document.addEventListener('freeze', () => {
+  if (running) saveActiveRun(true);
 });
 
 // ——— Бег ———
@@ -1388,46 +1883,52 @@ function setRunning(value: boolean): void {
     geoFilter.reset();
     geoCentered = false;
     lastGeoFix = performance.now();
+    segmentBreak = false;
+    setFollow(true);
     void requestWakeLock();
   } else {
     currentSpeed = 0;
+    segmentBreak = false;
     void releaseWakeLock();
   }
+  renderScore();
 }
 
 function startRun(): void {
-  syncBonus();
-  runSnapshot = { area: totalArea(), score: totalScore() };
+  const mode: GameMode = geoActive ? 'real' : 'test';
+
+  syncBonus(mode);
+  runMode = mode;
+  runSnapshot = { area: totalArea(mode), score: totalScore(mode) };
   distance = 0;
-  bonusAnchorDistance = 0;
+  buckets[mode].bonusAnchorDistance = 0;
   runTime = 0;
   currentSpeed = 0;
   runPoints = [];
   runRings = [];
   lastRunPointTime = 0;
-  runStartedAt = Date.now();
+  clearActiveRun();
+  activeRunSavedAt = 0;
   if (!hintCardEl.hidden) dismissFirstRunHint();
   setRunning(true);
-  if (!geoActive) pushRunPoint(position[0], position[1], runStartedAt, 5);
   renderHud();
   renderScore();
 }
 
 function stopRun(): void {
+  const mode = runMode;
   const snapshot = runSnapshot;
   const summary = snapshot
     ? {
         distance,
         time: runTime,
-        area: Math.max(0, totalArea() - snapshot.area),
-        score: Math.max(0, totalScore() - snapshot.score),
+        area: Math.max(0, totalArea(mode) - snapshot.area),
+        score: Math.max(0, totalScore(mode) - snapshot.score),
       }
     : null;
 
-  // Последняя точка симуляции: GPS уже присылает свои точки с точностью.
-  if (!geoActive) {
-    pushRunPoint(position[0], position[1], runStartedAt + runTime * 1000, 5);
-  }
+  saveActiveRun(true);
+
   const points = runPoints;
   const rings = runRings;
   runPoints = [];
@@ -1439,25 +1940,71 @@ function stopRun(): void {
   renderHud();
 
   if (!summary) return;
-  if (summary.distance >= 1 && summary.distance > bestRunDistance) {
+  // Рекорд считается только по реальным забегам.
+  if (mode === 'real' && summary.distance >= 1 && summary.distance > bestRunDistance) {
     bestRunDistance = summary.distance;
     saveBestRun();
     renderMenuStats();
   }
-  if (summary.distance >= 1) showRunSummary(summary);
-  if (summary.distance >= 10 && points.length >= 2) void submitOnlineRun(points, rings);
+  if (summary.distance >= 1) showRunSummary(summary, mode);
+
+  const canSubmit =
+    mode === 'real' && onlineEnabled && summary.distance >= 10 && points.length >= 2;
+  if (!canSubmit) {
+    clearActiveRun();
+  } else {
+    void submitOnlineRun(points, rings).then((handled) => {
+      if (handled) {
+        clearActiveRun();
+      } else {
+        restoreActiveRunButton();
+      }
+    });
+  }
+}
+
+// ——— Подсказка перед стартом ———
+
+let runHintSeen = false;
+
+function requestStartRun(): void {
+  unlockAudio();
+  if (!runHintSeen) {
+    runHintSeen = true;
+    // Подсказки не должны накладываться друг на друга.
+    hintCardEl.hidden = true;
+    runHintEl.hidden = false;
+    runHintStartButton.focus({ preventScroll: true });
+    return;
+  }
+  startRun();
 }
 
 runButton.addEventListener('click', () => {
   if (running) stopRun();
-  else startRun();
+  else requestStartRun();
+});
+
+runHintStartButton.addEventListener('click', () => {
+  runHintEl.hidden = true;
+  unlockAudio();
+  startRun();
+});
+
+runHintCancelButton.addEventListener('click', () => {
+  runHintEl.hidden = true;
+  runButton.focus({ preventScroll: true });
 });
 
 // ——— Маршрут и движение ———
 
 function placePlayer(next: LngLat): void {
+  if (!hasPosition) {
+    hasPosition = true;
+    displayPosition = [next[0], next[1]];
+    playerEl.classList.remove('player--hidden');
+  }
   position = next;
-  playerMarker.setLngLat(next);
 }
 
 function movePlayerTo(next: LngLat, forceHeading = false): void {
@@ -1489,12 +2036,12 @@ function updateCamera(dt: number): void {
   }
 
   let center: { lng: number; lat: number } | null = null;
-  if (followPlayer) {
+  if (followPlayer && hasPosition) {
     const current = map.getCenter();
     const follow = 1 - Math.exp(-dt * FOLLOW_STIFFNESS);
-    const lng = current.lng + (position[0] - current.lng) * follow;
-    const lat = current.lat + (position[1] - current.lat) * follow;
-    if (distanceMeters([lng, lat], position) > 0.4) center = { lng, lat };
+    const lng = current.lng + (displayPosition[0] - current.lng) * follow;
+    const lat = current.lat + (displayPosition[1] - current.lat) * follow;
+    if (distanceMeters([lng, lat], displayPosition) > 0.4) center = { lng, lat };
   }
 
   const bearingMoved = Math.abs(shortestAngle(map.getBearing(), bearing)) > 0.05;
@@ -1506,6 +2053,24 @@ function updateCamera(dt: number): void {
     ...(bearingMoved ? { bearing } : {}),
     ...(pitchMoved ? { pitch } : {}),
   });
+}
+
+/** Маркер плавно догоняет позицию, стрелка доворачивается по направлению движения. */
+function updatePlayerVisual(dt: number): void {
+  if (!hasPosition) return;
+
+  const follow = 1 - Math.exp(-dt * PLAYER_STIFFNESS);
+  displayPosition = lerp(displayPosition, position, follow);
+  // Резкий скачок (первый фикс, новый сегмент) не растягиваем в анимацию.
+  if (distanceMeters(displayPosition, position) > 60) {
+    displayPosition = [position[0], position[1]];
+  }
+  playerMarker.setLngLat(displayPosition);
+
+  const turn = 1 - Math.exp(-dt * HEADING_STIFFNESS);
+  displayHeading =
+    (displayHeading + shortestAngle(displayHeading, travelHeading) * turn + 360) % 360;
+  playerArrowEl.style.transform = `rotate(${displayHeading}deg)`;
 }
 
 function setFollow(value: boolean): void {
@@ -1523,14 +2088,28 @@ map.on('rotatestart', () => {
 
 locateButton.addEventListener('click', () => {
   setFollow(true);
-  map.easeTo({
-    center: position,
-    zoom: Math.max(map.getZoom(), 16),
-    duration: 700,
-  });
+
+  if (geoActive) {
+    map.easeTo({
+      center: position,
+      zoom: Math.max(map.getZoom(), 16),
+      duration: 700,
+    });
+    return;
+  }
+
+  locateMe(true);
 });
 
 function addWaypoint(point: LngLat): void {
+  // Первый клик в режиме имитации просто ставит игрока на карту.
+  if (!hasPosition) {
+    placePlayer(point);
+    setFollow(true);
+    map.easeTo({ center: point, zoom: Math.max(map.getZoom(), 16), duration: 700 });
+    return;
+  }
+
   waypoints.push(point);
 
   const element = document.createElement('div');
@@ -1561,6 +2140,7 @@ function registerMove(next: LngLat, meters: number): void {
   movePlayerTo(next, true);
   if (!running) return;
 
+  currentSpeed = RUN_SPEED;
   distance += meters;
   advanceTrail(previous, next);
 }
@@ -1612,14 +2192,95 @@ function renderGpsAccuracy(accuracy: number): void {
 }
 
 function renderGpsOff(): void {
+  accuracyMeters = null;
+  updateAccuracyCircle();
+  if (!geoActive) {
+    gpsPillEl.dataset.quality = 'test';
+    gpsAccuracyEl.textContent = 'Тест: имитация';
+    gpsPillEl.title = 'Имитация кликами: территории и забеги помечаются «тест»';
+    return;
+  }
   gpsPillEl.dataset.quality = 'off';
   gpsAccuracyEl.textContent = 'GPS выкл';
   gpsPillEl.title = 'Замеры GPS не используются';
 }
 
+let accuracyCircleKey = '';
+
+/** Круг точности GPS вокруг игрока: радиус в пикселях пересчитывается по зуму. */
+function updateAccuracyCircle(): void {
+  const source = map.getSource('gps-accuracy') as GeoJSONSource | undefined;
+  if (!source) return;
+
+  if (!geoActive || !hasPosition || accuracyMeters === null) {
+    if (accuracyCircleKey !== '') {
+      accuracyCircleKey = '';
+      source.setData(emptyPointCollection());
+    }
+    return;
+  }
+
+  const zoom = Math.round(map.getZoom() * 10) / 10;
+  const key = `${displayPosition[0].toFixed(6)},${displayPosition[1].toFixed(6)},${zoom},${Math.round(accuracyMeters)}`;
+  if (key === accuracyCircleKey) return;
+  accuracyCircleKey = key;
+
+  const feature: Feature<Point> = {
+    type: 'Feature',
+    properties: {},
+    geometry: { type: 'Point', coordinates: displayPosition },
+  };
+  source.setData({ type: 'FeatureCollection', features: [feature] });
+
+  const radius = accuracyMeters / metersPerPixel(displayPosition[1], map.getZoom());
+  map.setPaintProperty('gps-accuracy-circle', 'circle-radius', Math.max(6, Math.min(radius, 600)));
+}
+
+// Радиус круга задан в пикселях — при зуме его нужно пересчитать.
+map.on('zoom', updateAccuracyCircle);
+
+let lastAccuracyPulseAt = 0;
+
+/** Пульсация круга точности: дешёвая, обновляется ~12 раз в секунду. */
+function updateAccuracyPulse(now: number): void {
+  if (now - lastAccuracyPulseAt < 80) return;
+  lastAccuracyPulseAt = now;
+  if (!map.getLayer('gps-accuracy-circle') || accuracyMeters === null || !geoActive) return;
+
+  const pulse = 0.5 + 0.5 * Math.sin(now / ACCURACY_PULSE_MS);
+  map.setPaintProperty('gps-accuracy-circle', 'circle-opacity', 0.08 + 0.06 * pulse);
+  map.setPaintProperty('gps-accuracy-circle', 'circle-stroke-opacity', 0.28 + 0.28 * pulse);
+}
+
+function saveLastPosition(point: LngLat, force = false): void {
+  const now = Date.now();
+  if (!force && now - lastPositionSavedAt < LAST_POSITION_SAVE_MS) return;
+  lastPositionSavedAt = now;
+  try {
+    localStorage.setItem(LAST_POSITION_KEY, JSON.stringify({ lon: point[0], lat: point[1] }));
+  } catch {
+    // приватный режим: стартовая камера просто останется мировой
+  }
+}
+
+/** Новый сегмент трека: разрыв GPS не должен стать прямой линией и дистанцией. */
+function breakSegment(message?: string): void {
+  if (!running) return;
+  segmentBreak = true;
+  geoFilter.reset();
+  currentSpeed = 0;
+  resetTrail();
+  if (message) showStatus(message);
+}
+
 function handlePosition(reading: GeolocationPosition): void {
   const now = performance.now();
   const raw: LngLat = [reading.coords.longitude, reading.coords.latitude];
+
+  // Сигнал пропадал (экран гас, вкладка спала) — трек продолжаем новым сегментом.
+  if (running && lastGeoFix > 0 && now - lastGeoFix > SEGMENT_GAP_MS) {
+    breakSegment('GPS был на паузе, трек продолжен');
+  }
   lastGeoFix = now;
   renderGpsAccuracy(reading.coords.accuracy);
 
@@ -1627,21 +2288,53 @@ function handlePosition(reading: GeolocationPosition): void {
 
   if (result.accepted && result.point) {
     const point = result.point;
-    if (!geoCentered) {
-      geoCentered = true;
-      if (followPlayer) {
+    const firstFix = !geoCentered;
+    const firstEver = !hasPosition;
+    geoCentered = true;
+
+    if (firstFix && followPlayer) {
+      // Из мирового вида — плавный перелёт, а не прыжок через полкарты.
+      if (firstEver) {
+        map.flyTo({
+          center: point,
+          zoom: Math.max(map.getZoom(), 16),
+          pitch: DEFAULT_PITCH,
+          duration: 1600,
+          essential: true,
+        });
+      } else {
         map.easeTo({ center: point, zoom: Math.max(map.getZoom(), 16), duration: 900 });
       }
     }
+
     const previous = position;
-    movePlayerTo(point, true);
+    const broke = segmentBreak;
+    segmentBreak = false;
+    // Направление берём из GPS, а если его нет — из последнего сегмента.
+    movePlayerTo(point);
+
+    const heading = reading.coords.heading;
+    if (typeof heading === 'number' && Number.isFinite(heading)) travelHeading = heading;
+
+    if (broke) {
+      // После паузы GPS маркер появляется на новом месте, а не едет через город.
+      displayPosition = [point[0], point[1]];
+    }
 
     if (running) {
-      distance += result.stepMeters;
-      advanceTrail(previous, point);
-      pushRunPoint(point[0], point[1], reading.timestamp, reading.coords.accuracy);
       if (result.speedMps > 0) currentSpeed = currentSpeed * 0.6 + result.speedMps * 0.4;
+      distance += broke ? 0 : result.stepMeters;
+      advanceTrail(broke ? point : previous, point);
+      pushRunPoint(point[0], point[1], reading.timestamp, reading.coords.accuracy);
+      saveLastPosition(point);
     }
+
+    if (firstEver) {
+      saveLastPosition(point, true);
+      if (onlineEnabled && onlineReady) void refreshOnlineCity();
+    }
+
+    updateAccuracyCircle();
     return;
   }
 
@@ -1649,37 +2342,126 @@ function handlePosition(reading: GeolocationPosition): void {
   else if (!running) placePlayer(raw);
 }
 
-function handleGeoError(error: GeolocationPositionError): void {
-  showStatus(
-    error.code === error.PERMISSION_DENIED
-      ? 'Доступ к геолокации запрещён'
-      : 'Не удалось получить геопозицию',
-  );
-  stopGeolocation();
+function showGeoHelp(): void {
+  geoHelpEl.hidden = false;
+  geoHelpCloseButton.focus({ preventScroll: true });
 }
 
-function startGeolocation(): void {
+function handleGeoError(error: GeolocationPositionError): void {
+  if (error.code === error.PERMISSION_DENIED) {
+    geoPermission = 'denied';
+    showGeoHelp();
+    stopGeolocation();
+    return;
+  }
+
+  const now = performance.now();
+  if (now - lastGeoErrorAt < 20000) return;
+  lastGeoErrorAt = now;
+  showStatus(
+    error.code === error.TIMEOUT
+      ? 'GPS не отвечает — ищем спутники…'
+      : 'Не удалось получить геопозицию',
+  );
+}
+
+function locateMe(center: boolean, silent = false): void {
+  if (!('geolocation' in navigator)) {
+    if (!silent) showStatus('Браузер не поддерживает геолокацию');
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (reading) => {
+      geoPermission = 'granted';
+      const point: LngLat = [reading.coords.longitude, reading.coords.latitude];
+
+      if (!running) {
+        placePlayer(point);
+      }
+      saveLastPosition(point, true);
+
+      if (center) {
+        map.easeTo({
+          center: point,
+          zoom: Math.max(map.getZoom(), 16),
+          pitch: DEFAULT_PITCH,
+          duration: 800,
+        });
+        setFollow(true);
+      }
+
+      if (!silent) showStatus('Геопозиция найдена');
+
+      if (onlineEnabled && onlineReady) {
+        void refreshOnlineCity();
+      }
+    },
+    (error) => {
+      if (error.code === error.PERMISSION_DENIED) {
+        geoPermission = 'denied';
+        showGeoHelp();
+      }
+      if (!silent) showStatus('Не удалось определить геопозицию');
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 12000,
+    },
+  );
+}
+
+async function refreshOnlineCity(): Promise<void> {
+  if (!onlineReady) return;
+  const city = await fetchCityAt(position[0], position[1]);
+  if (!city) return;
+  setOnlineCity(city);
+  void refreshLeaderboard();
+}
+
+function restartGeoWatch(): void {
+  if (!('geolocation' in navigator) || !geoActive) return;
+
+  if (geoWatchId !== null) {
+    navigator.geolocation.clearWatch(geoWatchId);
+  }
+
+  geoWatchId = navigator.geolocation.watchPosition(handlePosition, handleGeoError, {
+    enableHighAccuracy: true,
+    maximumAge: 0,
+    timeout: 15000,
+  });
+}
+
+function startGeolocation(initial = false): void {
   if (!('geolocation' in navigator)) {
     showStatus('Браузер не поддерживает геолокацию');
+    if (!geoActive) renderGpsOff();
     return;
   }
 
   geoActive = true;
+  accuracyMeters = null;
   geoFilter.reset();
   geoCentered = false;
   lastGeoFix = performance.now();
   currentSpeed = 0;
+  segmentBreak = false;
   clearWaypoints();
   gpsPillEl.dataset.quality = 'waiting';
   gpsAccuracyEl.textContent = '±… м';
   gpsPillEl.title = 'Ждём первый замер GPS';
   applyGeoSwitch();
   setFollow(true);
-  showStatus('Следуем за реальной геолокацией');
+  showStatus(
+    hasPosition ? 'GPS включён. Не блокируй экран во время бега' : 'Определяем местоположение…',
+  );
+  renderScore();
 
   geoWatchId = navigator.geolocation.watchPosition(handlePosition, handleGeoError, {
     enableHighAccuracy: true,
-    maximumAge: 1000,
+    maximumAge: initial ? 0 : 1000,
     timeout: 15000,
   });
 }
@@ -1688,10 +2470,12 @@ function stopGeolocation(): void {
   if (geoWatchId !== null) navigator.geolocation.clearWatch(geoWatchId);
   geoWatchId = null;
   geoActive = false;
+  accuracyMeters = null;
   geoFilter.reset();
   currentSpeed = 0;
   renderGpsOff();
   applyGeoSwitch();
+  renderScore();
 }
 
 // ——— Кнопки меню ———
@@ -1699,6 +2483,12 @@ function stopGeolocation(): void {
 geoButton.addEventListener('click', () => {
   if (geoActive) stopGeolocation();
   else startGeolocation();
+  saveSettings();
+});
+
+geoHelpCloseButton.addEventListener('click', () => {
+  geoHelpEl.hidden = true;
+  menuButton.focus({ preventScroll: true });
 });
 
 timescaleButton.addEventListener('click', () => {
@@ -1751,6 +2541,33 @@ onlineNameButton.addEventListener('click', () => {
 
 onlineRefreshButton.addEventListener('click', refreshOnlineNow);
 
+onlineRecoverButton.addEventListener('click', () => {
+  const journal = readActiveRun();
+  if (!journal || journal.points.length < 2) {
+    clearActiveRun();
+    return;
+  }
+  if (!onlineReady) {
+    setOnlineStatus('Сначала дождись подключения к онлайн');
+    return;
+  }
+
+  onlineRecoverButton.disabled = true;
+  void submitOnlineRun(journal.points, journal.rings).then((handled) => {
+    onlineRecoverButton.disabled = false;
+    if (handled) clearActiveRun();
+  });
+});
+
+seasonPillEl.addEventListener('click', () => {
+  openMenu();
+  requestAnimationFrame(() => {
+    document
+      .querySelector('[aria-label="Онлайн"]')
+      ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  });
+});
+
 clearButton.addEventListener('click', () => {
   const confirmed = window.confirm(
     'Сбросить все данные? Территории, очки и рекорд будут удалены без возможности вернуть.',
@@ -1760,26 +2577,30 @@ clearButton.addEventListener('click', () => {
   setRunning(false);
   runSnapshot = null;
   clearWaypoints();
-  trail = [];
+  resetTrail();
   distance = 0;
   runTime = 0;
   currentSpeed = 0;
   geoFilter.reset();
   geoCentered = false;
+  segmentBreak = false;
   bestRunDistance = 0;
   runPoints = [];
   runRings = [];
   lastRunPointTime = 0;
+  clearActiveRun();
 
-  clearTerritories(); // обнуляет и очки, и bonusAnchorDistance
-  updateTrail();
+  clearTerritories('real'); // обнуляет и очки, и bonusAnchorDistance
+  clearTerritories('test');
   renderHud();
   renderScore();
   saveBestRun();
 
   try {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(TEST_STORAGE_KEY);
     localStorage.removeItem(BEST_RUN_KEY);
+    localStorage.removeItem(LAST_POSITION_KEY);
   } catch {
     // приватный режим: удалять нечего
   }
@@ -1832,29 +2653,31 @@ function tick(now: number): void {
       if (now - lastGeoFix > GEO_STALE_MS) currentSpeed = 0;
     } else {
       simulate(dt);
-      if (runStartedAt + runTime * 1000 - lastRunPointTime >= 1000) {
-        pushRunPoint(position[0], position[1], runStartedAt + runTime * 1000, 5);
-      }
     }
   }
 
   updateFlash(now);
+  updatePlayerVisual(dt);
   updateCamera(dt);
+  updateAccuracyPulse(now);
   renderHud();
   requestAnimationFrame(tick);
 }
 
 // Бонус за дистанцию, набранный после последнего захвата, тоже должен пережить перезагрузку.
 window.addEventListener('pagehide', () => {
-  syncBonus();
+  syncBonus(currentMode());
   saveState();
+  saveActiveRun(true);
+  if (geoActive && hasPosition) saveLastPosition(position, true);
   void releaseWakeLock();
 });
 
 loadState();
 loadSettings();
 loadBestRun();
-for (const territory of territories) addTerritoryLabel(territory);
+for (const territory of buckets.real.territories) addTerritoryLabel(territory, 'real');
+for (const territory of buckets.test.territories) addTerritoryLabel(territory, 'test');
 renderScore();
 renderTerritoryList();
 renderHud();
@@ -1867,6 +2690,33 @@ renderGpsOff();
 renderBuildInfo();
 setupFirstRunHint();
 setFollow(true);
+
+if ('permissions' in navigator) {
+  void navigator.permissions
+    .query({ name: 'geolocation' })
+    .then((status) => {
+      const applyPermission = (): void => {
+        geoPermission =
+          status.state === 'granted'
+            ? 'granted'
+            : status.state === 'denied'
+              ? 'denied'
+              : 'prompt';
+        if (geoPermission === 'denied' && geoActive) showGeoHelp();
+      };
+      applyPermission();
+      status.onchange = applyPermission;
+    })
+    .catch(() => {
+      // Permissions API может быть недоступен — останется запрос при первом старте.
+    });
+}
+
+// На телефоне сразу просим реальную позицию: старт не должен быть в чужом городе.
+if (geoActive) {
+  startGeolocation(true);
+}
+
 requestAnimationFrame(tick);
 
 // TEMP: screenshot hook, will be removed

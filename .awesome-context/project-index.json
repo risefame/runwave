@@ -1,15 +1,16 @@
 {
-  "generatedAt": "2026-11-12T16:32:29.352Z",
+  "generatedAt": "2026-11-13T07:14:45.150Z",
   "rootDir": "C:\\Users\\ogoly\\Desktop\\Project\\приложение для бега",
-  "totalFiles": 18,
-  "totalDirectories": 5,
+  "totalFiles": 29,
+  "totalDirectories": 9,
   "byExtension": {
     "[no-ext]": 1,
-    ".md": 2,
+    ".md": 3,
+    ".sql": 8,
     ".html": 1,
     ".json": 3,
     ".webmanifest": 1,
-    ".ts": 8,
+    ".ts": 10,
     ".css": 1,
     ".jsonc": 1
   },
@@ -30,14 +31,59 @@
       "mtimeMs": 1794482747941.1216
     },
     {
+      "path": "supabase/migrations/0001_schema.sql",
+      "bytes": 13253,
+      "mtimeMs": 1794513205777.2444
+    },
+    {
+      "path": "supabase/migrations/0002_rls.sql",
+      "bytes": 5980,
+      "mtimeMs": 1794513046634.038
+    },
+    {
+      "path": "supabase/migrations/0003_functions.sql",
+      "bytes": 28149,
+      "mtimeMs": 1794515181274.2693
+    },
+    {
+      "path": "supabase/migrations/0004_api.sql",
+      "bytes": 2248,
+      "mtimeMs": 1794514951352.048
+    },
+    {
+      "path": "supabase/README.md",
+      "bytes": 4341,
+      "mtimeMs": 1794516189584.017
+    },
+    {
+      "path": "supabase/seed.sql",
+      "bytes": 840,
+      "mtimeMs": 1794514954957.0027
+    },
+    {
+      "path": "supabase/setup.sql",
+      "bytes": 51015,
+      "mtimeMs": 1794515944104.1426
+    },
+    {
+      "path": "supabase/tests/00_auth_stub.sql",
+      "bytes": 2093,
+      "mtimeMs": 1794513046636.2437
+    },
+    {
+      "path": "supabase/tests/game_test.sql",
+      "bytes": 19464,
+      "mtimeMs": 1794513223203.3784
+    },
+    {
       "path": "web/index.html",
-      "bytes": 10768,
-      "mtimeMs": 1794499311038.1375
+      "bytes": 15584,
+      "mtimeMs": 1794552610889.9883
     },
     {
       "path": "web/package.json",
-      "bytes": 619,
-      "mtimeMs": 1794483944263.9438
+      "bytes": 660,
+      "mtimeMs": 1794514755776.7305
     },
     {
       "path": "web/public/manifest.webmanifest",
@@ -56,13 +102,13 @@
     },
     {
       "path": "web/src/main.ts",
-      "bytes": 41732,
-      "mtimeMs": 1794499760541.4646
+      "bytes": 88326,
+      "mtimeMs": 1794554064696.9773
     },
     {
       "path": "web/src/map/palette.ts",
-      "bytes": 1343,
-      "mtimeMs": 1794499369447.6633
+      "bytes": 2371,
+      "mtimeMs": 1794553010748.0515
     },
     {
       "path": "web/src/map/style.json",
@@ -71,13 +117,23 @@
     },
     {
       "path": "web/src/map/style.ts",
-      "bytes": 8359,
-      "mtimeMs": 1794499212839.0586
+      "bytes": 16492,
+      "mtimeMs": 1794511384646.764
+    },
+    {
+      "path": "web/src/online.ts",
+      "bytes": 8260,
+      "mtimeMs": 1794524769290.6343
     },
     {
       "path": "web/src/style.css",
-      "bytes": 18505,
-      "mtimeMs": 1794484436025.7595
+      "bytes": 26275,
+      "mtimeMs": 1794553959496.1543
+    },
+    {
+      "path": "web/src/supabase.ts",
+      "bytes": 586,
+      "mtimeMs": 1794514788755.837
     },
     {
       "path": "web/src/territory.test.ts",
@@ -114,6 +170,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": [
+    "@supabase/supabase-js",
     "@turf/area",
     "@turf/center-of-mass",
     "@turf/difference",

@@ -1,24 +1,24 @@
 # Project Map
 
-Generated at: 2026-11-12T16:32:29.352Z
+Generated at: 2026-11-13T07:14:45.150Z
 
 ## Repository Snapshot
-- Total files: 18
-- Total directories: 5
+- Total files: 29
+- Total directories: 9
 - Truncated scan: no
 
 ## Repository Identity
 - Root package: runwave-web-prototype
 - README summary: none detected
 - Workspace packages: 1
-- Direct dependencies indexed: 10
+- Direct dependencies indexed: 11
 
 ## Browse First
 - Inspect entrypoint: web/src/main.ts
 - Inspect config: web/vite.config.ts
-- Browse directory: web/ (15 files)
+- Browse directory: web/ (17 files)
+- Browse directory: supabase/ (9 files)
 - Browse directory: .gitignore/ (1 files)
-- Browse directory: AGENTS.md/ (1 files)
 - Build command: web#build
 - Test command: web#test
 
@@ -32,16 +32,31 @@ Generated at: 2026-11-12T16:32:29.352Z
 
 ```text
 .
+├── supabase/
+│   ├── migrations/
+│   │   ├── 0001_schema.sql
+│   │   ├── 0002_rls.sql
+│   │   ├── 0003_functions.sql
+│   │   └── 0004_api.sql
+│   ├── tests/
+│   │   ├── 00_auth_stub.sql
+│   │   └── game_test.sql
+│   ├── README.md
+│   ├── seed.sql
+│   └── setup.sql
 ├── web/
 │   ├── public/
 │   │   ├── icons/
 │   │   └── manifest.webmanifest
+│   ├── screenshots/
 │   ├── src/
 │   │   ├── map/
 │   │   ├── gpsFilter.test.ts
 │   │   ├── gpsFilter.ts
 │   │   ├── main.ts
+│   │   ├── online.ts
 │   │   ├── style.css
+│   │   ├── supabase.ts
 │   │   ├── territory.test.ts
 │   │   └── territory.ts
 │   ├── index.html
@@ -55,9 +70,10 @@ Generated at: 2026-11-12T16:32:29.352Z
 ```
 
 ## Detected Languages
-- TypeScript: 8
+- TypeScript: 10
+- SQL: 8
 - JSON: 3
-- Markdown: 2
+- Markdown: 3
 - CSS: 1
 - HTML: 1
 
@@ -87,7 +103,8 @@ Generated at: 2026-11-12T16:32:29.352Z
 - none detected
 
 ## Key Directories
-- web/: 15 files
+- web/: 17 files
+- supabase/: 9 files
 - .gitignore/: 1 files
 - AGENTS.md/: 1 files
 - README.md/: 1 files
@@ -96,6 +113,7 @@ Generated at: 2026-11-12T16:32:29.352Z
 - none detected
 
 ## Dependency Highlights
+- @supabase/supabase-js
 - @turf/area
 - @turf/center-of-mass
 - @turf/difference

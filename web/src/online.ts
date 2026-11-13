@@ -254,7 +254,7 @@ export async function fetchLeaderboard(
   const { data, error } = await supabase.rpc('season_leaderboard', {
     p_city_id: cityId,
     p_district_id: null,
-    p_limit: 12,
+    p_limit: 200,
   });
 
   if (error) return { rows: [], error: friendly(error.message) };

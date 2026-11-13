@@ -76,8 +76,14 @@ export const palette = {
     territory: '#22e6ff',
     territoryOutline: '#d9fdff',
     territoryFlash: '#eaffff',
+    /** Территории и следы тестового режима: фиолетовые, чтобы не путать с реальными. */
+    territoryTest: '#b38bff',
+    territoryTestOutline: '#e6dcff',
     trail: '#00e5ff',
     trailCore: '#d9fdff',
+    trailCold: '#2f7bff',
+    trailFast: '#9dffef',
+    accuracy: '#22e6ff',
     route: '#8f7bff',
   },
 

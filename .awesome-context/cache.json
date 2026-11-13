@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-12T19:54:40.231Z",
+  "generatedAt": "2026-11-13T07:14:49.366Z",
   "root": ".",
   "parserVersion": 2,
   "graphVersion": 1,
@@ -29,26 +29,26 @@
       "lastProcessed": "2026-11-12T11:53:36.600Z"
     },
     "supabase/README.md": {
-      "hash": "d9957f54e5801ae62cb9b6192252a37ea09efe1dede2fdc5f3355440bee41e67",
-      "size": 3276,
-      "mtimeMs": 1794513046637.2498,
+      "hash": "a72ba2c1730517bdb61a316a0fe64222b3ae792e80e021b63a5ed05678ff4c0e",
+      "size": 4341,
+      "mtimeMs": 1794516189584.017,
       "language": "markdown",
       "symbols": [],
       "imports": [],
       "exports": [],
       "summary": "Documentation file.",
-      "lastProcessed": "2026-11-12T19:54:40.230Z"
+      "lastProcessed": "2026-11-13T07:14:45.179Z"
     },
     "web/package.json": {
-      "hash": "067c91911216121f5df8d388641dac4d3473eee24a83680b47484ecacb38f673",
-      "size": 619,
-      "mtimeMs": 1794483944263.9438,
+      "hash": "6d69eab212132cfd6093ed8feebb0e9b38178ce91b529b7368be4ed471c41946",
+      "size": 660,
+      "mtimeMs": 1794514755776.7305,
       "language": "json",
       "symbols": [],
       "imports": [],
       "exports": [],
       "summary": "Configuration module.",
-      "lastProcessed": "2026-11-12T11:53:36.600Z"
+      "lastProcessed": "2026-11-13T07:14:45.180Z"
     },
     "web/src/gpsFilter.test.ts": {
       "hash": "e6a16a5a7481f8ab61ddd4453c8614586720d4d4b1a5d4cbd25364f8e8a4dbb8",
@@ -88,9 +88,9 @@
       "lastProcessed": "2026-11-12T11:53:36.602Z"
     },
     "web/src/main.ts": {
-      "hash": "e3e1ab0bca18c63d65bb1ba83ab02311fdd1c2c342a874089c109f75090f4f80",
-      "size": 46132,
-      "mtimeMs": 1794511384672.9326,
+      "hash": "4fa6edbad51ea7af160e2eda239bc554821e457262e9e2ce70cb3848dbd289be",
+      "size": 88326,
+      "mtimeMs": 1794554064696.9773,
       "language": "typescript",
       "symbols": [],
       "imports": [
@@ -98,18 +98,17 @@
         "./map/palette",
         "./map/style",
         "./style.css",
-        "geojson",
         "maplibre-gl",
         "maplibre-gl/dist/maplibre-gl.css"
       ],
       "exports": [],
       "summary": "Module file: web/src/main.ts",
-      "lastProcessed": "2026-11-12T19:27:31.067Z"
+      "lastProcessed": "2026-11-13T07:14:45.180Z"
     },
     "web/src/map/palette.ts": {
-      "hash": "e7a182c2210c699568114e6b9b04e10db5abda8a6de55933c83df25f2f9fb0bc",
-      "size": 1871,
-      "mtimeMs": 1794511016253.3423,
+      "hash": "02b44f7512b56f428d0123a09d2e7d6ab8d34fab30e1b1f3a74dec9e106bb4c9",
+      "size": 2371,
+      "mtimeMs": 1794553010748.0515,
       "language": "typescript",
       "symbols": [
         "palette"
@@ -119,7 +118,7 @@
         "palette"
       ],
       "summary": "Defines palette.",
-      "lastProcessed": "2026-11-12T19:27:31.067Z"
+      "lastProcessed": "2026-11-13T07:14:45.181Z"
     },
     "web/src/map/style.json": {
       "hash": "c90dbfd0e428f7ea40740c29e789167c24f79e91327761960e08c44ca8f7795e",
@@ -150,6 +149,55 @@
       ],
       "summary": "Defines buildMapStyle.",
       "lastProcessed": "2026-11-12T19:27:31.067Z"
+    },
+    "web/src/online.ts": {
+      "hash": "4165de460d2acd0d292ad9a66be0e3796b4cdce6bb800370bed623d40adaaa38",
+      "size": 8260,
+      "mtimeMs": 1794524769290.6343,
+      "language": "typescript",
+      "symbols": [
+        "ensureAnonymousSession",
+        "fetchCityAt",
+        "fetchLeaderboard",
+        "fetchOnlineTerritories",
+        "getOnlineUserId",
+        "loadProfileName",
+        "saveProfileName",
+        "submitRun"
+      ],
+      "imports": [
+        "./supabase",
+        "geojson"
+      ],
+      "exports": [
+        "ensureAnonymousSession",
+        "fetchCityAt",
+        "fetchLeaderboard",
+        "fetchOnlineTerritories",
+        "getOnlineUserId",
+        "loadProfileName",
+        "saveProfileName",
+        "submitRun"
+      ],
+      "summary": "Defines ensureAnonymousSession, fetchCityAt, fetchLeaderboard.",
+      "lastProcessed": "2026-11-13T07:14:45.181Z"
+    },
+    "web/src/supabase.ts": {
+      "hash": "8edba2ffaacca7bbdd8ab6a9c2bd826f4369e459edbaad1a61e46519b73d3c91",
+      "size": 586,
+      "mtimeMs": 1794514788755.837,
+      "language": "typescript",
+      "symbols": [
+        "supabase"
+      ],
+      "imports": [
+        "@supabase/supabase-js"
+      ],
+      "exports": [
+        "supabase"
+      ],
+      "summary": "Defines supabase.",
+      "lastProcessed": "2026-11-13T07:14:45.182Z"
     },
     "web/src/territory.test.ts": {
       "hash": "827fa57aac5a01cd439482b0595a0b5e61b1ce982ce5b65c2615d8c99b309121",
