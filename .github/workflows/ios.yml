@@ -1,0 +1,154 @@
+name: iOS unsigned IPA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-unsigned-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build unsigned ipa
+    # macos-latest = macOS 26 (arm64) с Xcode 26.x по умолчанию: Capacitor 8 требует Xcode 26.0+.
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Build web
+        working-directory: web
+        run: npm run build
+
+      - name: Capacitor sync (ios)
+        working-directory: web
+        run: npx cap sync ios
+
+      - name: Check Xcode version
+        run: |
+          set -euo pipefail
+          XCODE_VERSION="$(xcodebuild -version | awk 'NR==1{print $2}')"
+          echo "Xcode ${XCODE_VERSION}"
+          MAJOR="${XCODE_VERSION%%.*}"
+          if [ "${MAJOR}" -lt 26 ]; then
+            echo "Нужен Xcode 26+ (Capacitor 8), на образе ${XCODE_VERSION}"
+            exit 1
+          fi
+
+      - name: Archive (без подписи)
+        working-directory: web/ios/App
+        run: |
+          set -euo pipefail
+          BUILD_DIR="${GITHUB_WORKSPACE}/build"
+          XARCHIVE="${BUILD_DIR}/Runwave.xcarchive"
+          SYMROOT="${BUILD_DIR}/symroot"
+          mkdir -p "${BUILD_DIR}"
+
+          SIGN_ARGS=(
+            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_REQUIRED=NO
+            CODE_SIGN_IDENTITY=""
+            EXPANDED_CODE_SIGN_IDENTITY=""
+          )
+
+          # В чистом клоне общих схем может не быть: тогда пробуем archive по target.
+          SCHEME=""
+          if LIST_JSON="$(xcodebuild -list -json -project App.xcodeproj 2>/dev/null)"; then
+            SCHEME="$(printf '%s' "${LIST_JSON}" \
+              | python3 -c 'import json,sys; d=json.load(sys.stdin)["project"]; s=d.get("schemes") or []; print(s[0] if s else "")' \
+                2>/dev/null || true)"
+          fi
+
+          ARCHIVED=0
+          if [ -n "${SCHEME}" ]; then
+            echo "Схема: ${SCHEME}"
+            if xcodebuild archive \
+                 -project App.xcodeproj \
+                 -scheme "${SCHEME}" \
+                 -configuration Release \
+                 -sdk iphoneos \
+                 -archivePath "${XARCHIVE}" \
+                 -derivedDataPath "${BUILD_DIR}/DerivedData" \
+                 "${SIGN_ARGS[@]}"; then
+              ARCHIVED=1
+            fi
+          else
+            echo "Общих схем нет, пробую archive по target App"
+            if xcodebuild archive \
+                 -project App.xcodeproj \
+                 -target App \
+                 -configuration Release \
+                 -sdk iphoneos \
+                 -archivePath "${XARCHIVE}" \
+                 "${SIGN_ARGS[@]}"; then
+              ARCHIVED=1
+            fi
+          fi
+
+          if [ "${ARCHIVED}" -ne 1 ]; then
+            echo "archive недоступен, собираю обычным build без подписи"
+            xcodebuild build \
+              -project App.xcodeproj \
+              -target App \
+              -configuration Release \
+              -sdk iphoneos \
+              SYMROOT="${SYMROOT}" \
+              "${SIGN_ARGS[@]}"
+          fi
+
+      - name: Pack unsigned IPA
+        run: |
+          set -euo pipefail
+          BUILD_DIR="${GITHUB_WORKSPACE}/build"
+          APP_PATH=""
+
+          if [ -d "${BUILD_DIR}/Runwave.xcarchive/Products/Applications" ]; then
+            APP_PATH="$(find "${BUILD_DIR}/Runwave.xcarchive/Products/Applications" \
+              -maxdepth 1 -name '*.app' -print -quit)"
+          fi
+          if [ -z "${APP_PATH}" ] && [ -d "${BUILD_DIR}/symroot/Release-iphoneos" ]; then
+            APP_PATH="$(find "${BUILD_DIR}/symroot/Release-iphoneos" \
+              -maxdepth 1 -name '*.app' -print -quit)"
+          fi
+          if [ -z "${APP_PATH}" ]; then
+            echo "Не найден собранный .app"
+            ls -R "${BUILD_DIR}" || true
+            exit 1
+          fi
+
+          APP_NAME="$(basename "${APP_PATH}")"
+          echo "Собрано: ${APP_NAME}"
+
+          rm -rf "${BUILD_DIR}/ipa"
+          mkdir -p "${BUILD_DIR}/ipa/Payload"
+          cp -R "${APP_PATH}" "${BUILD_DIR}/ipa/Payload/"
+          # На случай, если Xcode оставил следы подписи.
+          rm -rf "${BUILD_DIR}/ipa/Payload/${APP_NAME}/_CodeSignature" \
+                 "${BUILD_DIR}/ipa/Payload/${APP_NAME}/embedded.mobileprovision"
+
+          cd "${BUILD_DIR}/ipa"
+          zip -qry "${BUILD_DIR}/Runwave-unsigned.ipa" Payload
+          ls -lh "${BUILD_DIR}/Runwave-unsigned.ipa"
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: runwave-ios-unsigned
+          path: build/Runwave-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 30
