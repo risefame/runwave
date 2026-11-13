@@ -1,11 +1,33 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-13T07:51:13.144Z",
+  "generatedAt": "2026-11-13T08:29:53.076Z",
   "root": ".",
   "parserVersion": 2,
   "graphVersion": 1,
   "configFingerprint": "09b46aaa65017d4663125c3a239d761fc08e2090cd5dfe2133a7e51a2c95b14d",
   "files": {
+    ".github/workflows/android.yml": {
+      "hash": "8f7ec2eb3c386a68ae9be2835600ae74a001ff402e3a09ebaf7e5f0e6f1a294d",
+      "size": 1749,
+      "mtimeMs": 1794558563680.4998,
+      "language": "yaml",
+      "symbols": [],
+      "imports": [],
+      "exports": [],
+      "summary": "Configuration module.",
+      "lastProcessed": "2026-11-13T08:29:53.071Z"
+    },
+    ".github/workflows/ios.yml": {
+      "hash": "9336ba56f2f3df3ef9623fe20b5ae4acc2c5fa60e0a4b8b19e620988cb5e997e",
+      "size": 5193,
+      "mtimeMs": 1794557571097.6729,
+      "language": "yaml",
+      "symbols": [],
+      "imports": [],
+      "exports": [],
+      "summary": "Configuration module.",
+      "lastProcessed": "2026-11-13T08:29:53.071Z"
+    },
     "AGENTS.md": {
       "hash": "d7b07c5ee266617f1a6de85811c3b39418e43cd41d83932934eca23a789537cc",
       "size": 655,
@@ -64,7 +86,7 @@
     "web/android/app/src/main/assets/capacitor.config.json": {
       "hash": "1f0076d1803f1a1c4afe16bd19daf24d61332d64069afddcf15beb6d71d14962",
       "size": 75,
-      "mtimeMs": 1794556252295.9763,
+      "mtimeMs": 1794556311999.8591,
       "language": "json",
       "symbols": [],
       "imports": [],
@@ -75,7 +97,7 @@
     "web/android/app/src/main/assets/capacitor.plugins.json": {
       "hash": "8abf379d886df7ec7b725c5657b4054c9746f8103b25c03dde80c9a358a02e48",
       "size": 134,
-      "mtimeMs": 1794556252324.7505,
+      "mtimeMs": 1794556312027.975,
       "language": "json",
       "symbols": [],
       "imports": [],
@@ -115,7 +137,7 @@
     "web/android/app/src/main/assets/public/cordova_plugins.js": {
       "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "size": 0,
-      "mtimeMs": 1794556252355.4077,
+      "mtimeMs": 1794556312054.633,
       "language": "javascript",
       "symbols": [],
       "imports": [],
@@ -126,7 +148,7 @@
     "web/android/app/src/main/assets/public/cordova.js": {
       "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "size": 0,
-      "mtimeMs": 1794556252355.4077,
+      "mtimeMs": 1794556312054.633,
       "language": "javascript",
       "symbols": [],
       "imports": [],
@@ -170,9 +192,9 @@
       "lastProcessed": "2026-11-13T07:44:55.284Z"
     },
     "web/capacitor.config.ts": {
-      "hash": "3bc858555c8c9821e587b0b3aad7ddc523ca0fb4fe81ae04b8f87f855092e305",
-      "size": 848,
-      "mtimeMs": 1794555294354.5198,
+      "hash": "f94f6e6b60fcab1e03495decbc8131385e92c2aef633be35d8acbee756a515c9",
+      "size": 988,
+      "mtimeMs": 1794556306017.445,
       "language": "typescript",
       "symbols": [],
       "imports": [
@@ -180,7 +202,7 @@
       ],
       "exports": [],
       "summary": "Configuration module.",
-      "lastProcessed": "2026-11-13T07:44:55.284Z"
+      "lastProcessed": "2026-11-13T08:29:53.072Z"
     },
     "web/ios/App/App/Assets.xcassets/AppIcon.appiconset/Contents.json": {
       "hash": "30cdf27ab0ec2bcb51c244b829ea2f2202978c4bb8374299e90c09ea4017276c",
@@ -218,7 +240,7 @@
     "web/ios/App/App/capacitor.config.json": {
       "hash": "0f69c1e4faa3e3bbeb9984b75445b5d62e10174b6f329070e37cb410395b3b1e",
       "size": 128,
-      "mtimeMs": 1794556252537.263,
+      "mtimeMs": 1794556312228.1628,
       "language": "json",
       "symbols": [],
       "imports": [],
@@ -258,7 +280,7 @@
     "web/ios/App/App/public/cordova_plugins.js": {
       "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "size": 0,
-      "mtimeMs": 1794556252520.346,
+      "mtimeMs": 1794556312211.5142,
       "language": "javascript",
       "symbols": [],
       "imports": [],
@@ -269,7 +291,7 @@
     "web/ios/App/App/public/cordova.js": {
       "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "size": 0,
-      "mtimeMs": 1794556252520.346,
+      "mtimeMs": 1794556312211.0059,
       "language": "javascript",
       "symbols": [],
       "imports": [],
@@ -289,15 +311,15 @@
       "lastProcessed": "2026-11-13T07:44:55.296Z"
     },
     "web/package.json": {
-      "hash": "fdd2607b871bc6b4f5174b93396f93702053b629ba2a950030ad1e9cfb5051dc",
-      "size": 949,
-      "mtimeMs": 1794555601559.9297,
+      "hash": "01ade5d85a26c380a2dd126f13baa3deefa0444d3b9c0f9419fff279746945ec",
+      "size": 924,
+      "mtimeMs": 1794558567930.1013,
       "language": "json",
       "symbols": [],
       "imports": [],
       "exports": [],
       "summary": "Configuration module.",
-      "lastProcessed": "2026-11-13T07:44:55.296Z"
+      "lastProcessed": "2026-11-13T08:29:53.074Z"
     },
     "web/src/geolocation.ts": {
       "hash": "bd60a6595b11d70fcce28cfcd6c492775768be85fe0f82a1471018d1f113be78",
@@ -545,9 +567,9 @@
       "lastProcessed": "2026-11-13T07:44:55.301Z"
     },
     "web/vite.config.ts": {
-      "hash": "6f5abcb3743cc0bae2546168d8a4ca3c99f1278db9d6a50ec29866db7bf48b01",
-      "size": 539,
-      "mtimeMs": 1794555657770.946,
+      "hash": "2d8205b2b3944b747c3cd4865a418a2a5217b4d8ecfc2c8a12ad9ee9a288433e",
+      "size": 235,
+      "mtimeMs": 1794558563680.4998,
       "language": "typescript",
       "symbols": [],
       "imports": [
@@ -556,7 +578,7 @@
       ],
       "exports": [],
       "summary": "Configuration module.",
-      "lastProcessed": "2026-11-13T07:44:55.301Z"
+      "lastProcessed": "2026-11-13T08:29:53.074Z"
     }
   }
 }
