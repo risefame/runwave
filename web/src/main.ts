@@ -21,9 +21,11 @@ import {
   type TerritoryGeometry,
   type TerritoryShape,
 } from './territory';
-import { accuracyQuality, createGpsFilter, formatAccuracy } from './gpsFilter';
+import { createGpsFilter } from './gpsFilter';
 import {
+  ensureGeoPermission,
   GeoError,
+  getGeoApprox,
   getGeoOnce,
   isGeoSupported,
   isNativeGeo,
@@ -31,6 +33,7 @@ import {
   type GeoErrorKind,
   type GeoFix,
 } from './geolocation';
+import { describeGeoStatus, GEO_READY_ACCURACY_M } from './geoStatus';
 import { buildMapStyle } from './map/style';
 import { palette } from './map/palette';
 import {
@@ -64,6 +67,7 @@ const DISTANCE_BONUS_PER_METER = 2; // очков за каждый метр д�
 const STORAGE_KEY = 'runwave:territories:v2';
 const TEST_STORAGE_KEY = 'runwave:territories:test:v1';
 const SETTINGS_KEY = 'runwave:settings:v1';
+const DEV_MODE_KEY = 'runwave:dev:v1';
 const BEST_RUN_KEY = 'runwave:best-run:v1';
 const HINT_KEY = 'runwave:hint:v1';
 const ACTIVE_RUN_KEY = 'runwave:active-run:v1';
@@ -129,12 +133,25 @@ function isWeakDevice(): boolean {
   return (memory !== undefined && memory <= 4) || (cores !== undefined && cores <= 4);
 }
 
-/** Телефоны и планшеты: там реальный GPS включается по умолчанию. */
-function isTouchDevice(): boolean {
-  return (
-    navigator.maxTouchPoints > 0 || window.matchMedia('(hover: none) and (pointer: coarse)').matches
-  );
+/** Режим разработчика: ?dev=1 запоминается, ?dev=0 выключает. */
+function readDevMode(): boolean {
+  const fromUrl = new URLSearchParams(window.location.search).get('dev');
+  try {
+    if (fromUrl === '1') {
+      localStorage.setItem(DEV_MODE_KEY, '1');
+      return true;
+    }
+    if (fromUrl === '0') {
+      localStorage.removeItem(DEV_MODE_KEY);
+      return false;
+    }
+    return localStorage.getItem(DEV_MODE_KEY) === '1';
+  } catch {
+    return fromUrl === '1';
+  }
 }
+
+const devMode = readDevMode();
 
 const initialSettings = readStoredSettings();
 let buildings3d = initialSettings?.buildings3d === true;
@@ -198,7 +215,14 @@ const runHintEl = byId<HTMLDivElement>('run-hint');
 const runHintStartButton = byId<HTMLButtonElement>('btn-run-hint-start');
 const runHintCancelButton = byId<HTMLButtonElement>('btn-run-hint-cancel');
 const geoHelpEl = byId<HTMLDivElement>('geo-help');
+const geoHelpTitleEl = byId('geo-help-title');
 const geoHelpCloseButton = byId<HTMLButtonElement>('btn-geo-help-close');
+const geoMissingEl = byId<HTMLDivElement>('geo-missing');
+const geoMissingCloseButton = byId<HTMLButtonElement>('btn-geo-missing-close');
+const geoIndoorHintEl = byId<HTMLDivElement>('geo-indoor-hint');
+const geoIndoorCloseButton = byId<HTMLButtonElement>('btn-geo-indoor-close');
+const geoWaitEl = byId<HTMLDivElement>('geo-wait');
+const devGeoEl = byId('dev-geo-status');
 const captureBannerEl = byId<HTMLDivElement>('capture-banner');
 const captureBannerTitleEl = byId('capture-banner-title');
 const captureBannerAreaEl = byId('capture-banner-area');
@@ -279,13 +303,24 @@ let units: Units = 'metric';
 let runTime = 0; // секунды модельного времени
 let distance = 0; // метры
 let currentSpeed = 0; // м/с
-// На телефоне по умолчанию реальный GPS, на десктопе — имитация кликами.
-let geoActive = typeof initialSettings?.geo === 'boolean' ? initialSettings.geo : isTouchDevice();
+// Боевая игра всегда работает с реальным GPS; имитация — только в режиме разработчика.
+let geoActive = devMode ? initialSettings?.geo !== false : true;
 let geoWatchStop: (() => void) | null = null;
 let geoCentered = false;
 let lastGeoFix = 0;
 let lastGeoErrorAt = 0;
 let accuracyMeters: number | null = null;
+let preciseAccuracy: number | null = null;
+let preciseReady = false;
+let coarseAccuracy: number | null = null;
+let preciseSeen = false;
+let geoSearchStartedAt = 0;
+let firstApproxAt: number | null = null;
+let firstPreciseAt: number | null = null;
+let indoorHintShown = false;
+let lastGeoStatusRenderAt = 0;
+let noSignalWarningShown = false;
+let nativePermissionChecked = false;
 let segmentBreak = false;
 let lastPositionSavedAt = 0;
 const geoFilter = createGpsFilter();
@@ -700,7 +735,9 @@ const buckets: Record<GameMode, GameBucket> = {
 
 /** Текущий режим: в беге он фиксируется на старте, вне бега зависит от GPS. */
 function currentMode(): GameMode {
-  return running ? runMode : geoActive ? 'real' : 'test';
+  if (running) return runMode;
+  if (geoActive || !devMode) return 'real';
+  return 'test';
 }
 
 let flash: { shape: TerritoryShape; startedAt: number } | null = null;
@@ -805,7 +842,9 @@ function territoryFeatures(mode: GameMode): Feature<TerritoryShape>[] {
 function territoryCollection(): FeatureCollection<TerritoryShape> {
   return {
     type: 'FeatureCollection',
-    features: [...territoryFeatures('real'), ...territoryFeatures('test')],
+    features: devMode
+      ? [...territoryFeatures('real'), ...territoryFeatures('test')]
+      : territoryFeatures('real'),
   };
 }
 
@@ -916,7 +955,7 @@ function renderMenuStats(): void {
 
   const testArea = totalArea('test');
   const testCount = buckets.test.territories.length;
-  statTestEl.hidden = testArea <= 0 && testCount === 0;
+  statTestEl.hidden = !devMode || (testArea <= 0 && testCount === 0);
   if (!statTestEl.hidden) {
     setText(statTestEl, `Тест: ${formatArea(testArea)} · территорий ${testCount}`);
   }
@@ -927,7 +966,9 @@ function renderTerritoryList(): void {
 
   const entries = [
     ...buckets.real.territories.map((territory, index) => ({ territory, index, test: false })),
-    ...buckets.test.territories.map((territory, index) => ({ territory, index, test: true })),
+    ...(devMode
+      ? buckets.test.territories.map((territory, index) => ({ territory, index, test: true }))
+      : []),
   ];
 
   for (let position = entries.length - 1; position >= 0; position -= 1) {
@@ -1026,7 +1067,7 @@ function loadSettings(): void {
   const parsed = readStoredSettings();
   if (!parsed) return;
   if (parsed.units === 'imperial') units = 'imperial';
-  if (parsed.timeScale === 10) timeScale = 10;
+  if (parsed.timeScale === 10 && devMode) timeScale = 10;
 }
 
 function saveSettings(): void {
@@ -1910,11 +1951,19 @@ function setRunning(value: boolean): void {
   }
   // В нативном режиме уведомление о фоновой записи нужно только во время бега.
   if (isNativeGeo && geoActive) restartGeoWatch();
+  renderGeoStatus();
   renderScore();
 }
 
 function startRun(): void {
-  const mode: GameMode = geoActive ? 'real' : 'test';
+  const mode = currentMode();
+
+  if (geoActive && !preciseReady && !noSignalWarningShown) {
+    noSignalWarningShown = true;
+    showStatus(
+      'GPS ещё не готов: запись начнётся, но точки засчитаются после точного сигнала',
+    );
+  }
 
   syncBonus(mode);
   runMode = mode;
@@ -2196,39 +2245,71 @@ function simulate(dt: number): void {
 }
 
 map.on('click', (event) => {
+  // Маршрут по клику — только имитация в режиме разработчика.
   if (geoActive) {
-    showStatus('В режиме реальной геолокации маршрут по клику отключён');
+    if (devMode) showStatus('В режиме реальной геолокации маршрут по клику отключён');
     return;
   }
+  if (!devMode) return;
   addWaypoint([event.lngLat.lng, event.lngLat.lat]);
 });
 
 // ——— Реальная геолокация ———
 
-function renderGpsAccuracy(accuracy: number): void {
-  const quality = accuracyQuality(accuracy);
-  gpsPillEl.dataset.quality = quality;
-  gpsAccuracyEl.textContent = formatAccuracy(accuracy);
-  gpsPillEl.title =
-    quality === 'good'
-      ? 'Хороший сигнал GPS'
-      : quality === 'fair'
-        ? 'Средний сигнал GPS'
-        : 'Слабый сигнал GPS: замеры отбрасываются';
+/** Индикатор GPS и баннер ожидания точного сигнала. */
+function renderGeoStatus(): void {
+  const status = describeGeoStatus({
+    supported: isGeoSupported(),
+    geoActive,
+    devMode,
+    coarseAccuracy,
+    preciseAccuracy,
+    preciseReady,
+    elapsedMs: geoSearchStartedAt > 0 ? performance.now() - geoSearchStartedAt : 0,
+  });
+
+  gpsPillEl.dataset.quality = status.quality;
+  gpsAccuracyEl.textContent = status.text;
+  gpsPillEl.title = status.title;
+  geoWaitEl.hidden = !(running && status.waitingPrecise);
+
+  if (status.indoorHint && !indoorHintShown) {
+    indoorHintShown = true;
+    geoIndoorHintEl.hidden = false;
+  }
 }
 
-function renderGpsOff(): void {
-  accuracyMeters = null;
-  updateAccuracyCircle();
-  if (!geoActive) {
-    gpsPillEl.dataset.quality = 'test';
-    gpsAccuracyEl.textContent = 'Тест: имитация';
-    gpsPillEl.title = 'Имитация кликами: территории и забеги помечаются «тест»';
+/** Время до первого замера — только для проверок в режиме разработчика. */
+function renderDevGeoStatus(): void {
+  if (!devMode) return;
+
+  if (!isGeoSupported()) {
+    setText(devGeoEl, 'Геолокация недоступна на устройстве');
     return;
   }
-  gpsPillEl.dataset.quality = 'off';
-  gpsAccuracyEl.textContent = 'GPS выкл';
-  gpsPillEl.title = 'Замеры GPS не используются';
+  if (!geoActive) {
+    setText(devGeoEl, 'Реальный GPS выключен · имитация кликами');
+    return;
+  }
+
+  const elapsed = geoSearchStartedAt > 0 ? (performance.now() - geoSearchStartedAt) / 1000 : 0;
+  const approx = firstApproxAt === null ? '—' : `${(firstApproxAt / 1000).toFixed(1)} с`;
+  const precise = firstPreciseAt === null ? '—' : `${(firstPreciseAt / 1000).toFixed(1)} с`;
+  setText(
+    devGeoEl,
+    `Поиск: ${elapsed.toFixed(1)} с · приблизительный фикс: ${approx} · точный: ${precise}`,
+  );
+}
+
+/** Переключатели имитации и сброс данных живут только в режиме разработчика. */
+function applyDevMode(): void {
+  document.body.classList.toggle('dev-mode', devMode);
+}
+
+function showGeoUnavailable(): void {
+  if (!geoMissingEl.hidden) return;
+  geoMissingEl.hidden = false;
+  geoMissingCloseButton.focus({ preventScroll: true });
 }
 
 let accuracyCircleKey = '';
@@ -2308,14 +2389,21 @@ function handlePosition(fix: GeoFix): void {
     breakSegment('GPS был на паузе, трек продолжен');
   }
   lastGeoFix = now;
-  renderGpsAccuracy(fix.accuracy);
+  if (firstPreciseAt === null && geoSearchStartedAt > 0) {
+    firstPreciseAt = now - geoSearchStartedAt;
+  }
+  preciseAccuracy = fix.accuracy;
+  accuracyMeters = fix.accuracy;
+  if (!preciseReady && fix.accuracy <= GEO_READY_ACCURACY_M) preciseReady = true;
+  renderGeoStatus();
 
   const result = geoFilter.push({ point: raw, accuracy: fix.accuracy, time: now });
 
   if (result.accepted && result.point) {
     const point = result.point;
     const firstFix = !geoCentered;
-    const firstEver = !hasPosition;
+    const firstEver = !preciseSeen;
+    preciseSeen = true;
     geoCentered = true;
 
     if (firstFix && followPlayer) {
@@ -2364,11 +2452,16 @@ function handlePosition(fix: GeoFix): void {
     return;
   }
 
-  if (result.standing) currentSpeed = 0;
+    if (result.standing) currentSpeed = 0;
   else if (!running) placePlayer(raw);
+  updateAccuracyCircle();
 }
 
 function showGeoHelp(): void {
+  if (!geoHelpEl.hidden) return;
+  geoHelpTitleEl.textContent = isNativeGeo
+    ? 'Нужен доступ к геолокации'
+    : 'Доступ к геолокации закрыт';
   geoHelpEl.hidden = false;
   geoHelpCloseButton.focus({ preventScroll: true });
 }
@@ -2376,8 +2469,19 @@ function showGeoHelp(): void {
 function handleGeoError(kind: GeoErrorKind): void {
   if (kind === 'denied') {
     geoPermission = 'denied';
+    // В нативном режиме сначала повторяем запрос разрешения, затем — путь в настройки.
+    if (isNativeGeo && !nativePermissionChecked) {
+      nativePermissionChecked = true;
+      void retryNativePermission();
+      return;
+    }
     showGeoHelp();
-    stopGeolocation();
+    return;
+  }
+
+  if (kind === 'unavailable') {
+    showGeoUnavailable();
+    renderGeoStatus();
     return;
   }
 
@@ -2385,6 +2489,30 @@ function handleGeoError(kind: GeoErrorKind): void {
   if (now - lastGeoErrorAt < 20000) return;
   lastGeoErrorAt = now;
   showStatus(kind === 'timeout' ? 'GPS не отвечает — ищем спутники…' : 'Не удалось получить геопозицию');
+}
+
+async function retryNativePermission(): Promise<void> {
+  const state = await ensureGeoPermission();
+  if (!geoActive) return;
+  if (state === 'granted') {
+    geoFilter.reset();
+    geoSearchStartedAt = performance.now();
+    restartGeoWatch();
+    renderGeoStatus();
+    showStatus('Доступ к геолокации разрешён');
+    return;
+  }
+  showGeoHelp();
+}
+
+async function requestNativePermission(): Promise<void> {
+  const state = await ensureGeoPermission();
+  if (!geoActive) return;
+  if (state === 'denied') {
+    showGeoHelp();
+    return;
+  }
+  if (state === 'granted') showStatus('Доступ к геолокации разрешён');
 }
 
 async function locateMe(center: boolean, silent = false): Promise<void> {
@@ -2454,31 +2582,32 @@ function stopGeoWatch(): void {
 
 function startGeolocation(initial = false): void {
   if (!isGeoSupported()) {
-    showStatus('Браузер не поддерживает геолокацию');
-    if (!geoActive) renderGpsOff();
+    renderGeoStatus();
+    showGeoUnavailable();
     return;
   }
 
   geoActive = true;
   accuracyMeters = null;
+  preciseAccuracy = null;
+  preciseReady = false;
+  coarseAccuracy = null;
+  preciseSeen = false;
+  firstApproxAt = null;
+  firstPreciseAt = null;
+  indoorHintShown = false;
+  geoIndoorHintEl.hidden = true;
+  geoSearchStartedAt = performance.now();
   geoFilter.reset();
   geoCentered = false;
   lastGeoFix = performance.now();
   currentSpeed = 0;
   segmentBreak = false;
   clearWaypoints();
-  gpsPillEl.dataset.quality = 'waiting';
-  gpsAccuracyEl.textContent = '±… м';
-  gpsPillEl.title = 'Ждём первый замер GPS';
   applyGeoSwitch();
   setFollow(true);
-  showStatus(
-    hasPosition
-      ? isNativeGeo
-        ? 'GPS включён'
-        : 'GPS включён. Не блокируй экран во время бега'
-      : 'Определяем местоположение…',
-  );
+  renderGeoStatus();
+  showStatus('Ищем вас…');
   renderScore();
 
   stopGeoWatch();
@@ -2486,22 +2615,73 @@ function startGeolocation(initial = false): void {
     background: running,
     maximumAge: initial ? 0 : 1000,
   });
+
+  // Этап 2 идёт параллельно с точным определением (этап 3).
+  void startApproxSearch();
+  if (isNativeGeo) void requestNativePermission();
+}
+
+/**
+ * Этап 2: приблизительная позиция по сети за секунды. Показывает место на карте,
+ * но в трек и захват не попадает — для записи нужен точный сигнал.
+ */
+async function startApproxSearch(): Promise<void> {
+  if (isNativeGeo) return;
+  try {
+    const fix = await getGeoApprox();
+    if (!geoActive || preciseReady || geoCentered) return;
+    if (!Number.isFinite(fix.accuracy)) return;
+
+    const point: LngLat = [fix.lon, fix.lat];
+    if (firstApproxAt === null) firstApproxAt = performance.now() - geoSearchStartedAt;
+    coarseAccuracy = fix.accuracy;
+    accuracyMeters = fix.accuracy;
+
+    const firstEver = !hasPosition;
+    position = [point[0], point[1]];
+    displayPosition = [point[0], point[1]];
+    hasPosition = true;
+    playerEl.classList.remove('player--hidden');
+
+    if (followPlayer) {
+      map.easeTo({
+        center: point,
+        zoom: Math.max(map.getZoom(), 16),
+        pitch: DEFAULT_PITCH,
+        duration: firstEver ? 1200 : 700,
+      });
+    }
+
+    // Прыжок с приблизительной точки на точную не должен стать дистанцией.
+    if (running) segmentBreak = true;
+
+    updateAccuracyCircle();
+    renderGeoStatus();
+  } catch {
+    // Приблизительная точка не обязательна: точный сигнал подтянется сам.
+  }
 }
 
 function stopGeolocation(): void {
   stopGeoWatch();
   geoActive = false;
   accuracyMeters = null;
+  preciseAccuracy = null;
+  preciseReady = false;
+  coarseAccuracy = null;
+  geoSearchStartedAt = 0;
   geoFilter.reset();
   currentSpeed = 0;
-  renderGpsOff();
+  updateAccuracyCircle();
   applyGeoSwitch();
+  renderGeoStatus();
   renderScore();
 }
 
 // ——— Кнопки меню ———
 
 geoButton.addEventListener('click', () => {
+  if (!devMode) return;
   if (geoActive) stopGeolocation();
   else startGeolocation();
   saveSettings();
@@ -2512,7 +2692,17 @@ geoHelpCloseButton.addEventListener('click', () => {
   menuButton.focus({ preventScroll: true });
 });
 
+geoMissingCloseButton.addEventListener('click', () => {
+  geoMissingEl.hidden = true;
+  menuButton.focus({ preventScroll: true });
+});
+
+geoIndoorCloseButton.addEventListener('click', () => {
+  geoIndoorHintEl.hidden = true;
+});
+
 timescaleButton.addEventListener('click', () => {
+  if (!devMode) return;
   timeScale = timeScale === 1 ? 10 : 1;
   applyTimeScale();
   saveSettings();
@@ -2592,6 +2782,7 @@ seasonPillEl.addEventListener('click', () => {
 });
 
 clearButton.addEventListener('click', () => {
+  if (!devMode) return;
   const confirmed = window.confirm(
     'Сбросить все данные? Территории, очки и рекорд будут удалены без возможности вернуть.',
   );
@@ -2674,7 +2865,7 @@ function tick(now: number): void {
     runTime += dt * timeScale;
     if (geoActive) {
       if (now - lastGeoFix > GEO_STALE_MS) currentSpeed = 0;
-    } else {
+    } else if (devMode) {
       simulate(dt);
     }
   }
@@ -2684,6 +2875,12 @@ function tick(now: number): void {
   updateCamera(dt);
   updateAccuracyPulse(now);
   renderHud();
+  renderDevGeoStatus();
+  // Подсказка про помещение зависит от времени, а не от новых замеров.
+  if (geoActive && !preciseReady && now - lastGeoStatusRenderAt > 1000) {
+    lastGeoStatusRenderAt = now;
+    renderGeoStatus();
+  }
   requestAnimationFrame(tick);
 }
 
@@ -2700,7 +2897,9 @@ loadState();
 loadSettings();
 loadBestRun();
 for (const territory of buckets.real.territories) addTerritoryLabel(territory, 'real');
-for (const territory of buckets.test.territories) addTerritoryLabel(territory, 'test');
+if (devMode) {
+  for (const territory of buckets.test.territories) addTerritoryLabel(territory, 'test');
+}
 renderScore();
 renderTerritoryList();
 renderHud();
@@ -2709,7 +2908,8 @@ applyTimeScale();
 applyGeoSwitch();
 applyMapSettings();
 applyOnline();
-renderGpsOff();
+applyDevMode();
+renderGeoStatus();
 renderBuildInfo();
 setupFirstRunHint();
 setFollow(true);
@@ -2735,9 +2935,11 @@ if (!isNativeGeo && 'permissions' in navigator) {
     });
 }
 
-// На телефоне сразу просим реальную позицию: старт не должен быть в чужом городе.
+// Игра всегда работает с реальным GPS: сразу просим позицию, а не стартуем в чужом городе.
 if (geoActive) {
   startGeolocation(true);
+} else if (!isGeoSupported()) {
+  showGeoUnavailable();
 }
 
 requestAnimationFrame(tick);

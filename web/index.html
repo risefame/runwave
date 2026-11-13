@@ -94,16 +94,47 @@
 
       <div class="geo-help" id="geo-help" hidden role="dialog" aria-labelledby="geo-help-title">
         <h2 id="geo-help-title">Доступ к геолокации закрыт</h2>
-        <p>
+        <p class="browser-only">
           iPhone: <b>Настройки → Конфиденциальность и безопасность → Службы геолокации</b> —
           включи их, затем разреши доступ для <b>Safari</b> (или браузера, где открыт Runwave) и
           обнови страницу.
         </p>
-        <p>
+        <p class="browser-only">
           Android: <b>Настройки → Приложения → Браузер → Разрешения → Местоположение</b>.
+        </p>
+        <p class="native-only">
+          Android: <b>Настройки → Приложения → Runwave → Разрешения → Местоположение</b> —
+          разреши доступ и вернись в игру.
+        </p>
+        <p class="native-only">
+          iPhone: <b>Настройки → Runwave → Геопозиция → При использовании программы</b>, затем
+          открой игру снова.
         </p>
         <button id="btn-geo-help-close" class="hint-btn" type="button">Понятно</button>
       </div>
+
+      <div
+        class="geo-help"
+        id="geo-missing"
+        hidden
+        role="dialog"
+        aria-labelledby="geo-missing-title"
+      >
+        <h2 id="geo-missing-title">Геолокация недоступна</h2>
+        <p>
+          На этом устройстве нет геолокации, а Runwave работает только с реальным GPS. Открой игру
+          на телефоне или включи геолокацию в системе.
+        </p>
+        <p class="dev-only">В режиме разработчика имитацию можно включить в настройках.</p>
+        <button id="btn-geo-missing-close" class="hint-btn" type="button">Понятно</button>
+      </div>
+
+      <div class="hint-card" id="geo-indoor-hint" hidden>
+        <p>В помещении GPS ищет дольше. Подойдите к окну или выйдите на улицу.</p>
+        <button id="btn-geo-indoor-close" class="hint-btn" type="button">Понятно</button>
+      </div>
+
+      <div class="geo-wait" id="geo-wait" hidden>Ждём точный сигнал</div>
 
       <div class="capture-banner" id="capture-banner" hidden aria-live="polite">
         <span class="capture-banner-title" id="capture-banner-title">Территория захвачена</span>
@@ -195,7 +226,7 @@
         <section class="menu-section" aria-label="Настройки">
           <h2 class="menu-title">Настройки</h2>
 
-          <div class="setting">
+          <div class="setting dev-only">
             <div class="setting-text">
               <span class="setting-name">Имитация ×10</span>
               <span class="setting-desc">Ускоренное время пробежки</span>
@@ -212,7 +243,7 @@
             </button>
           </div>
 
-          <div class="setting">
+          <div class="setting dev-only">
             <div class="setting-text">
               <span class="setting-name">Реальная геолокация</span>
               <span class="setting-desc" id="geo-desc">Выкл.: имитация кликами по карте</span>
@@ -345,7 +376,10 @@
 
         <section class="menu-section menu-section--dev" aria-label="Для разработчика">
           <h2 class="menu-title">Для разработчика</h2>
-          <button id="btn-clear" class="danger-btn" type="button">Сбросить все данные</button>
+          <p class="dev-geo" id="dev-geo-status">Поиск GPS: —</p>
+          <button id="btn-clear" class="danger-btn dev-only" type="button">
+            Сбросить все данные
+          </button>
           <dl class="build-info">
             <div>
               <dt>Версия</dt>

@@ -153,6 +153,50 @@ export function watchGeo(
   };
 }
 
+export type GeoPermissionState = 'granted' | 'denied' | 'prompt' | 'unknown';
+
+/**
+ * Разрешение на геолокацию. В нативном режиме при отказе запрос повторяется:
+ * системный диалог показывается только пока разрешение не отклонено окончательно.
+ */
+export async function ensureGeoPermission(): Promise<GeoPermissionState> {
+  try {
+    if (isNativeGeo) {
+      const status = await enqueueNative(() =>
+        BackgroundGeolocation.requestPermissions({ permissions: ['location'] }),
+      );
+      const location = status.location;
+      if (location === 'granted') return 'granted';
+      return location === 'denied' ? 'denied' : 'prompt';
+    }
+
+    if ('permissions' in navigator) {
+      const status = await navigator.permissions.query({ name: 'geolocation' });
+      return status.state;
+    }
+  } catch {
+    // Permissions API может быть недоступен — останется системный запрос при замере.
+  }
+  return 'unknown';
+}
+
+/**
+ * Приблизительный замер по сети: без высокой точности, за секунды.
+ * Годится только для показа места на карте, не для трека.
+ */
+export function getGeoApprox(): Promise<GeoFix> {
+  if (!isNativeGeo) {
+    return new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        (reading) => resolve(fromBrowserPosition(reading)),
+        (error) => reject(new GeoError(browserErrorKind(error))),
+        { enableHighAccuracy: false, maximumAge: 300000, timeout: 10000 },
+      );
+    });
+  }
+  return getGeoOnce();
+}
+
 /** Один замер: для кнопки «на мне», когда постоянная запись выключена. */
 export function getGeoOnce(): Promise<GeoFix> {
   if (!isNativeGeo) {

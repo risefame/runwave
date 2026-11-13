@@ -1387,6 +1387,68 @@ body {
   display: none;
 }
 
+/* Пути в настройки отличаются у браузера и нативного приложения. */
+.native-only {
+  display: none;
+}
+
+.is-native .native-only {
+  display: block;
+}
+
+/* ——— Режим разработчика ——— */
+
+.dev-only,
+.dev-geo {
+  display: none;
+}
+
+body.dev-mode .setting.dev-only {
+  display: flex;
+}
+
+body.dev-mode .danger-btn.dev-only {
+  display: block;
+}
+
+body.dev-mode .geo-help .dev-only {
+  display: block;
+}
+
+body.dev-mode .dev-geo {
+  margin: 10px 0 0;
+  display: block;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+/* ——— Ожидание точного сигнала ——— */
+
+.geo-wait {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--safe-bottom) + 84px);
+  z-index: 7;
+  padding: 6px 14px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(255, 215, 106, 0.45);
+  border-radius: 999px;
+  background: rgba(30, 24, 8, 0.92);
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffe0a8;
+  white-space: nowrap;
+  pointer-events: none;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.geo-wait[hidden] {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .menu,
   .scrim,
