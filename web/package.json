@@ -8,9 +8,14 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "cap:sync": "npm run build && npx cap sync"
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/ios": "^8.6.2",
+    "@capgo/background-geolocation": "^8.6.3",
     "@supabase/supabase-js": "^2.119.0",
     "@turf/area": "^7.4.0",
     "@turf/center-of-mass": "^7.4.0",
@@ -20,7 +25,10 @@
     "maplibre-gl": "^5.6.0"
   },
   "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
+    "@capacitor/cli": "^8.6.2",
     "@types/geojson": "^7946.0.16",
+    "terser": "^5.51.2",
     "typescript": "^5.6.3",
     "vite": "^6.3.5",
     "vitest": "^5.1.0"

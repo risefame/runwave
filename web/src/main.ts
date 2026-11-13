@@ -22,6 +22,15 @@ import {
   type TerritoryShape,
 } from './territory';
 import { accuracyQuality, createGpsFilter, formatAccuracy } from './gpsFilter';
+import {
+  GeoError,
+  getGeoOnce,
+  isGeoSupported,
+  isNativeGeo,
+  watchGeo,
+  type GeoErrorKind,
+  type GeoFix,
+} from './geolocation';
 import { buildMapStyle } from './map/style';
 import { palette } from './map/palette';
 import {
@@ -268,7 +277,7 @@ let distance = 0; // метры
 let currentSpeed = 0; // м/с
 // На телефоне по умолчанию реальный GPS, на десктопе — имитация кликами.
 let geoActive = typeof initialSettings?.geo === 'boolean' ? initialSettings.geo : isTouchDevice();
-let geoWatchId: number | null = null;
+let geoWatchStop: (() => void) | null = null;
 let geoCentered = false;
 let lastGeoFix = 0;
 let lastGeoErrorAt = 0;
@@ -1805,6 +1814,9 @@ summaryEl.addEventListener('click', (event) => {
 
 // ——— Экран не гаснет ———
 
+// Нативная запись работает в фоне, Wake Lock там не нужен и только мешает.
+if (isNativeGeo) document.body.classList.add('is-native');
+
 const wakeLockApi: WakeLock | null = 'wakeLock' in navigator ? navigator.wakeLock : null;
 let wakeLock: WakeLockSentinel | null = null;
 let wakeLockWarned = false;
@@ -1816,6 +1828,7 @@ function warnWakeLock(message: string): void {
 }
 
 async function requestWakeLock(): Promise<void> {
+  if (isNativeGeo) return;
   if (!wakeLockApi) {
     // Запасной вариант: ничего не блокируем, но честно предупреждаем.
     warnWakeLock('Браузер не умеет держать экран включённым — он может погаснуть');
@@ -1834,6 +1847,7 @@ async function requestWakeLock(): Promise<void> {
 }
 
 async function releaseWakeLock(): Promise<void> {
+  if (isNativeGeo) return;
   const lock = wakeLock;
   wakeLock = null;
   if (!lock) return;
@@ -1848,19 +1862,22 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
     if (running) {
       saveActiveRun(true);
-      // Экран погас или вкладка ушла в фон: следующий трек начнётся заново.
-      breakSegment();
+      // В браузере экран погас или вкладка ушла в фон: следующий трек начнётся заново.
+      // В нативном приложении сервис продолжает писать точки в фоне.
+      if (!isNativeGeo) breakSegment();
     }
     return;
   }
 
   if (!running) {
-    if (geoActive && geoWatchId === null) restartGeoWatch();
+    if (geoActive && geoWatchStop === null) restartGeoWatch();
     return;
   }
 
-  void requestWakeLock();
-  breakSegment('GPS был на паузе, трек продолжен');
+  if (!isNativeGeo) {
+    void requestWakeLock();
+    breakSegment('GPS был на паузе, трек продолжен');
+  }
 
   // После сна/свёрнутого приложения GPS-подписка могла остановиться.
   if (geoActive) restartGeoWatch();
@@ -1891,6 +1908,8 @@ function setRunning(value: boolean): void {
     segmentBreak = false;
     void releaseWakeLock();
   }
+  // В нативном режиме уведомление о фоновой записи нужно только во время бега.
+  if (isNativeGeo && geoActive) restartGeoWatch();
   renderScore();
 }
 
@@ -1969,6 +1988,11 @@ let runHintSeen = false;
 
 function requestStartRun(): void {
   unlockAudio();
+  // В нативном приложении запись идёт в фоне — подсказка про экран не нужна.
+  if (isNativeGeo) {
+    startRun();
+    return;
+  }
   if (!runHintSeen) {
     runHintSeen = true;
     // Подсказки не должны накладываться друг на друга.
@@ -2098,7 +2122,7 @@ locateButton.addEventListener('click', () => {
     return;
   }
 
-  locateMe(true);
+  void locateMe(true);
 });
 
 function addWaypoint(point: LngLat): void {
@@ -2273,18 +2297,18 @@ function breakSegment(message?: string): void {
   if (message) showStatus(message);
 }
 
-function handlePosition(reading: GeolocationPosition): void {
+function handlePosition(fix: GeoFix): void {
   const now = performance.now();
-  const raw: LngLat = [reading.coords.longitude, reading.coords.latitude];
+  const raw: LngLat = [fix.lon, fix.lat];
 
   // Сигнал пропадал (экран гас, вкладка спала) — трек продолжаем новым сегментом.
   if (running && lastGeoFix > 0 && now - lastGeoFix > SEGMENT_GAP_MS) {
     breakSegment('GPS был на паузе, трек продолжен');
   }
   lastGeoFix = now;
-  renderGpsAccuracy(reading.coords.accuracy);
+  renderGpsAccuracy(fix.accuracy);
 
-  const result = geoFilter.push({ point: raw, accuracy: reading.coords.accuracy, time: now });
+  const result = geoFilter.push({ point: raw, accuracy: fix.accuracy, time: now });
 
   if (result.accepted && result.point) {
     const point = result.point;
@@ -2313,7 +2337,7 @@ function handlePosition(reading: GeolocationPosition): void {
     // Направление берём из GPS, а если его нет — из последнего сегмента.
     movePlayerTo(point);
 
-    const heading = reading.coords.heading;
+    const heading = fix.heading;
     if (typeof heading === 'number' && Number.isFinite(heading)) travelHeading = heading;
 
     if (broke) {
@@ -2325,7 +2349,7 @@ function handlePosition(reading: GeolocationPosition): void {
       if (result.speedMps > 0) currentSpeed = currentSpeed * 0.6 + result.speedMps * 0.4;
       distance += broke ? 0 : result.stepMeters;
       advanceTrail(broke ? point : previous, point);
-      pushRunPoint(point[0], point[1], reading.timestamp, reading.coords.accuracy);
+      pushRunPoint(point[0], point[1], fix.timestamp, fix.accuracy);
       saveLastPosition(point);
     }
 
@@ -2347,8 +2371,8 @@ function showGeoHelp(): void {
   geoHelpCloseButton.focus({ preventScroll: true });
 }
 
-function handleGeoError(error: GeolocationPositionError): void {
-  if (error.code === error.PERMISSION_DENIED) {
+function handleGeoError(kind: GeoErrorKind): void {
+  if (kind === 'denied') {
     geoPermission = 'denied';
     showGeoHelp();
     stopGeolocation();
@@ -2358,58 +2382,48 @@ function handleGeoError(error: GeolocationPositionError): void {
   const now = performance.now();
   if (now - lastGeoErrorAt < 20000) return;
   lastGeoErrorAt = now;
-  showStatus(
-    error.code === error.TIMEOUT
-      ? 'GPS не отвечает — ищем спутники…'
-      : 'Не удалось получить геопозицию',
-  );
+  showStatus(kind === 'timeout' ? 'GPS не отвечает — ищем спутники…' : 'Не удалось получить геопозицию');
 }
 
-function locateMe(center: boolean, silent = false): void {
-  if (!('geolocation' in navigator)) {
+async function locateMe(center: boolean, silent = false): Promise<void> {
+  if (!isGeoSupported()) {
     if (!silent) showStatus('Браузер не поддерживает геолокацию');
     return;
   }
 
-  navigator.geolocation.getCurrentPosition(
-    (reading) => {
-      geoPermission = 'granted';
-      const point: LngLat = [reading.coords.longitude, reading.coords.latitude];
+  try {
+    const fix = await getGeoOnce();
+    geoPermission = 'granted';
+    const point: LngLat = [fix.lon, fix.lat];
 
-      if (!running) {
-        placePlayer(point);
-      }
-      saveLastPosition(point, true);
+    if (!running) {
+      placePlayer(point);
+    }
+    saveLastPosition(point, true);
 
-      if (center) {
-        map.easeTo({
-          center: point,
-          zoom: Math.max(map.getZoom(), 16),
-          pitch: DEFAULT_PITCH,
-          duration: 800,
-        });
-        setFollow(true);
-      }
+    if (center) {
+      map.easeTo({
+        center: point,
+        zoom: Math.max(map.getZoom(), 16),
+        pitch: DEFAULT_PITCH,
+        duration: 800,
+      });
+      setFollow(true);
+    }
 
-      if (!silent) showStatus('Геопозиция найдена');
+    if (!silent) showStatus('Геопозиция найдена');
 
-      if (onlineEnabled && onlineReady) {
-        void refreshOnlineCity();
-      }
-    },
-    (error) => {
-      if (error.code === error.PERMISSION_DENIED) {
-        geoPermission = 'denied';
-        showGeoHelp();
-      }
-      if (!silent) showStatus('Не удалось определить геопозицию');
-    },
-    {
-      enableHighAccuracy: true,
-      maximumAge: 0,
-      timeout: 12000,
-    },
-  );
+    if (onlineEnabled && onlineReady) {
+      void refreshOnlineCity();
+    }
+  } catch (error) {
+    const kind = error instanceof GeoError ? error.kind : 'unavailable';
+    if (kind === 'denied') {
+      geoPermission = 'denied';
+      showGeoHelp();
+    }
+    if (!silent) showStatus('Не удалось определить геопозицию');
+  }
 }
 
 async function refreshOnlineCity(): Promise<void> {
@@ -2421,21 +2435,23 @@ async function refreshOnlineCity(): Promise<void> {
 }
 
 function restartGeoWatch(): void {
-  if (!('geolocation' in navigator) || !geoActive) return;
+  if (!isGeoSupported() || !geoActive) return;
 
-  if (geoWatchId !== null) {
-    navigator.geolocation.clearWatch(geoWatchId);
-  }
-
-  geoWatchId = navigator.geolocation.watchPosition(handlePosition, handleGeoError, {
-    enableHighAccuracy: true,
+  stopGeoWatch();
+  geoWatchStop = watchGeo(handlePosition, handleGeoError, {
+    background: running,
     maximumAge: 0,
-    timeout: 15000,
   });
 }
 
+function stopGeoWatch(): void {
+  if (geoWatchStop === null) return;
+  geoWatchStop();
+  geoWatchStop = null;
+}
+
 function startGeolocation(initial = false): void {
-  if (!('geolocation' in navigator)) {
+  if (!isGeoSupported()) {
     showStatus('Браузер не поддерживает геолокацию');
     if (!geoActive) renderGpsOff();
     return;
@@ -2455,20 +2471,23 @@ function startGeolocation(initial = false): void {
   applyGeoSwitch();
   setFollow(true);
   showStatus(
-    hasPosition ? 'GPS включён. Не блокируй экран во время бега' : 'Определяем местоположение…',
+    hasPosition
+      ? isNativeGeo
+        ? 'GPS включён'
+        : 'GPS включён. Не блокируй экран во время бега'
+      : 'Определяем местоположение…',
   );
   renderScore();
 
-  geoWatchId = navigator.geolocation.watchPosition(handlePosition, handleGeoError, {
-    enableHighAccuracy: true,
+  stopGeoWatch();
+  geoWatchStop = watchGeo(handlePosition, handleGeoError, {
+    background: running,
     maximumAge: initial ? 0 : 1000,
-    timeout: 15000,
   });
 }
 
 function stopGeolocation(): void {
-  if (geoWatchId !== null) navigator.geolocation.clearWatch(geoWatchId);
-  geoWatchId = null;
+  stopGeoWatch();
   geoActive = false;
   accuracyMeters = null;
   geoFilter.reset();
@@ -2691,7 +2710,7 @@ renderBuildInfo();
 setupFirstRunHint();
 setFollow(true);
 
-if ('permissions' in navigator) {
+if (!isNativeGeo && 'permissions' in navigator) {
   void navigator.permissions
     .query({ name: 'geolocation' })
     .then((status) => {

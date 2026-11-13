@@ -32,3 +32,16 @@ Thumbs.db
 .freebuff/
 .claude/
 .wrangler/
+
+# Capacitor: сами проекты android/ios в Git, но не результаты сборки
+web/android/.gradle/
+web/android/.kotlin/
+web/android/build/
+web/android/app/build/
+web/android/local.properties
+web/android/.idea/
+web/ios/App/build/
+web/ios/App/Pods/
+web/ios/DerivedData/
+web/ios/xcuserdata/
+xcuserdata/

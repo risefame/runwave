@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-13T07:14:49.366Z",
+  "generatedAt": "2026-11-13T07:51:13.144Z",
   "root": ".",
   "parserVersion": 2,
   "graphVersion": 1,
-  "configFingerprint": "41fc6a2b57d19708c4ed4295152978bb4b6e8b1c123efa95d43ec644db508a88",
+  "configFingerprint": "09b46aaa65017d4663125c3a239d761fc08e2090cd5dfe2133a7e51a2c95b14d",
   "files": {
     "AGENTS.md": {
       "hash": "d7b07c5ee266617f1a6de85811c3b39418e43cd41d83932934eca23a789537cc",
@@ -15,7 +15,7 @@
       "imports": [],
       "exports": [],
       "summary": "Documentation file.",
-      "lastProcessed": "2026-11-12T11:53:36.600Z"
+      "lastProcessed": "2026-11-13T07:44:55.269Z"
     },
     "README.md": {
       "hash": "81434c341a681f506313d9d5536a1efa8e4e57bbd5399228001b0819984b73a1",
@@ -26,7 +26,7 @@
       "imports": [],
       "exports": [],
       "summary": "Documentation file.",
-      "lastProcessed": "2026-11-12T11:53:36.600Z"
+      "lastProcessed": "2026-11-13T07:44:55.269Z"
     },
     "supabase/README.md": {
       "hash": "a72ba2c1730517bdb61a316a0fe64222b3ae792e80e021b63a5ed05678ff4c0e",
@@ -37,18 +37,292 @@
       "imports": [],
       "exports": [],
       "summary": "Documentation file.",
-      "lastProcessed": "2026-11-13T07:14:45.179Z"
+      "lastProcessed": "2026-11-13T07:44:55.270Z"
     },
-    "web/package.json": {
-      "hash": "6d69eab212132cfd6093ed8feebb0e9b38178ce91b529b7368be4ed471c41946",
-      "size": 660,
-      "mtimeMs": 1794514755776.7305,
+    "web/android/app/src/androidTest/java/com/getcapacitor/myapp/ExampleInstrumentedTest.java": {
+      "hash": "ff50b4c110a7434312f9af54171f9e8523b015836f707c9b387b76d4c38a97f8",
+      "size": 774,
+      "mtimeMs": 1794507063000,
+      "language": "java",
+      "symbols": [
+        "ExampleInstrumentedTest"
+      ],
+      "imports": [
+        "android.content.Context",
+        "androidx.test.ext.junit.runners.AndroidJUnit4",
+        "androidx.test.platform.app.InstrumentationRegistry",
+        "org.junit.Assert.",
+        "org.junit.runner.RunWith",
+        "org.junit.Test"
+      ],
+      "exports": [
+        "ExampleInstrumentedTest"
+      ],
+      "summary": "Defines ExampleInstrumentedTest.",
+      "lastProcessed": "2026-11-13T07:44:55.270Z"
+    },
+    "web/android/app/src/main/assets/capacitor.config.json": {
+      "hash": "1f0076d1803f1a1c4afe16bd19daf24d61332d64069afddcf15beb6d71d14962",
+      "size": 75,
+      "mtimeMs": 1794556252295.9763,
       "language": "json",
       "symbols": [],
       "imports": [],
       "exports": [],
       "summary": "Configuration module.",
-      "lastProcessed": "2026-11-13T07:14:45.180Z"
+      "lastProcessed": "2026-11-13T07:44:55.271Z"
+    },
+    "web/android/app/src/main/assets/capacitor.plugins.json": {
+      "hash": "8abf379d886df7ec7b725c5657b4054c9746f8103b25c03dde80c9a358a02e48",
+      "size": 134,
+      "mtimeMs": 1794556252324.7505,
+      "language": "json",
+      "symbols": [],
+      "imports": [],
+      "exports": [],
+      "summary": "Configuration module.",
+      "lastProcessed": "2026-11-13T07:44:55.272Z"
+    },
+    "web/android/app/src/main/assets/public/assets/index-CnmnVvaw.js": {
+      "hash": "9b9c42da6c7d93f13043110ded5bcbe87b77b5479bd57b466f3708d517a99d5b",
+      "size": 1433967,
+      "mtimeMs": 1794556181134.973,
+      "language": "javascript",
+      "symbols": [],
+      "imports": [
+        "./web-wd_68JSM.js",
+        "@supabase/supabase-js/tracing"
+      ],
+      "exports": [
+        "xt"
+      ],
+      "summary": "Module file: web/android/app/src/main/assets/public/assets/index-CnmnVvaw.js",
+      "lastProcessed": "2026-11-13T07:51:13.131Z"
+    },
+    "web/android/app/src/main/assets/public/assets/web-wd_68JSM.js": {
+      "hash": "09274fc55acf931a1183bbc65803ad30abba1e1a0e4290b66e5f3ea807d3989f",
+      "size": 6323,
+      "mtimeMs": 1794556181134.973,
+      "language": "javascript",
+      "symbols": [],
+      "imports": [],
+      "exports": [
+        "t"
+      ],
+      "summary": "Module file: web/android/app/src/main/assets/public/assets/web-wd_68JSM.js",
+      "lastProcessed": "2026-11-13T07:51:13.132Z"
+    },
+    "web/android/app/src/main/assets/public/cordova_plugins.js": {
+      "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0,
+      "mtimeMs": 1794556252355.4077,
+      "language": "javascript",
+      "symbols": [],
+      "imports": [],
+      "exports": [],
+      "summary": "Module file: web/android/app/src/main/assets/public/cordova_plugins.js",
+      "lastProcessed": "2026-11-13T07:44:55.283Z"
+    },
+    "web/android/app/src/main/assets/public/cordova.js": {
+      "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0,
+      "mtimeMs": 1794556252355.4077,
+      "language": "javascript",
+      "symbols": [],
+      "imports": [],
+      "exports": [],
+      "summary": "Module file: web/android/app/src/main/assets/public/cordova.js",
+      "lastProcessed": "2026-11-13T07:44:55.283Z"
+    },
+    "web/android/app/src/main/java/com/runwave/game/MainActivity.java": {
+      "hash": "4b1999fca8086269aaed90f92ce5bf8f8eeac384e425915ad24675a4b5cdc523",
+      "size": 120,
+      "mtimeMs": 1794555687885.474,
+      "language": "java",
+      "symbols": [
+        "MainActivity"
+      ],
+      "imports": [
+        "com.getcapacitor.BridgeActivity"
+      ],
+      "exports": [
+        "MainActivity"
+      ],
+      "summary": "Defines MainActivity.",
+      "lastProcessed": "2026-11-13T07:44:55.283Z"
+    },
+    "web/android/app/src/test/java/com/getcapacitor/myapp/ExampleUnitTest.java": {
+      "hash": "d4045ae8fac1f0807e6b24eb34e68409a9a235df9d1a3f896fb8c9a49424363d",
+      "size": 402,
+      "mtimeMs": 1794507063000,
+      "language": "java",
+      "symbols": [
+        "ExampleUnitTest"
+      ],
+      "imports": [
+        "org.junit.Assert.",
+        "org.junit.Test"
+      ],
+      "exports": [
+        "ExampleUnitTest"
+      ],
+      "summary": "Defines ExampleUnitTest.",
+      "lastProcessed": "2026-11-13T07:44:55.284Z"
+    },
+    "web/capacitor.config.ts": {
+      "hash": "3bc858555c8c9821e587b0b3aad7ddc523ca0fb4fe81ae04b8f87f855092e305",
+      "size": 848,
+      "mtimeMs": 1794555294354.5198,
+      "language": "typescript",
+      "symbols": [],
+      "imports": [
+        "@capacitor/cli"
+      ],
+      "exports": [],
+      "summary": "Configuration module.",
+      "lastProcessed": "2026-11-13T07:44:55.284Z"
+    },
+    "web/ios/App/App/Assets.xcassets/AppIcon.appiconset/Contents.json": {
+      "hash": "30cdf27ab0ec2bcb51c244b829ea2f2202978c4bb8374299e90c09ea4017276c",
+      "size": 209,
+      "mtimeMs": 1794555704747.2964,
+      "language": "json",
+      "symbols": [],
+      "imports": [],
+      "exports": [],
+      "summary": "Configuration module.",
+      "lastProcessed": "2026-11-13T07:44:55.284Z"
+    },
+    "web/ios/App/App/Assets.xcassets/Contents.json": {
+      "hash": "972ec1fd42325872438eb085ac29e94f51c10788ec18ec5549439950866c541d",
+      "size": 62,
+      "mtimeMs": 1794507063000,
+      "language": "json",
+      "symbols": [],
+      "imports": [],
+      "exports": [],
+      "summary": "Configuration module.",
+      "lastProcessed": "2026-11-13T07:44:55.284Z"
+    },
+    "web/ios/App/App/Assets.xcassets/Splash.imageset/Contents.json": {
+      "hash": "cfabec10f16bc5ae4b60f28dccc7f1626fd59b13135e064350ce36f484b44f95",
+      "size": 1124,
+      "mtimeMs": 1794555706524.0168,
+      "language": "json",
+      "symbols": [],
+      "imports": [],
+      "exports": [],
+      "summary": "Configuration module.",
+      "lastProcessed": "2026-11-13T07:44:55.284Z"
+    },
+    "web/ios/App/App/capacitor.config.json": {
+      "hash": "0f69c1e4faa3e3bbeb9984b75445b5d62e10174b6f329070e37cb410395b3b1e",
+      "size": 128,
+      "mtimeMs": 1794556252537.263,
+      "language": "json",
+      "symbols": [],
+      "imports": [],
+      "exports": [],
+      "summary": "Configuration module.",
+      "lastProcessed": "2026-11-13T07:44:55.285Z"
+    },
+    "web/ios/App/App/public/assets/index-CnmnVvaw.js": {
+      "hash": "9b9c42da6c7d93f13043110ded5bcbe87b77b5479bd57b466f3708d517a99d5b",
+      "size": 1433967,
+      "mtimeMs": 1794556181134.973,
+      "language": "javascript",
+      "symbols": [],
+      "imports": [
+        "./web-wd_68JSM.js",
+        "@supabase/supabase-js/tracing"
+      ],
+      "exports": [
+        "xt"
+      ],
+      "summary": "Module file: web/ios/App/App/public/assets/index-CnmnVvaw.js",
+      "lastProcessed": "2026-11-13T07:51:13.142Z"
+    },
+    "web/ios/App/App/public/assets/web-wd_68JSM.js": {
+      "hash": "09274fc55acf931a1183bbc65803ad30abba1e1a0e4290b66e5f3ea807d3989f",
+      "size": 6323,
+      "mtimeMs": 1794556181134.973,
+      "language": "javascript",
+      "symbols": [],
+      "imports": [],
+      "exports": [
+        "t"
+      ],
+      "summary": "Module file: web/ios/App/App/public/assets/web-wd_68JSM.js",
+      "lastProcessed": "2026-11-13T07:51:13.142Z"
+    },
+    "web/ios/App/App/public/cordova_plugins.js": {
+      "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0,
+      "mtimeMs": 1794556252520.346,
+      "language": "javascript",
+      "symbols": [],
+      "imports": [],
+      "exports": [],
+      "summary": "Module file: web/ios/App/App/public/cordova_plugins.js",
+      "lastProcessed": "2026-11-13T07:44:55.296Z"
+    },
+    "web/ios/App/App/public/cordova.js": {
+      "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0,
+      "mtimeMs": 1794556252520.346,
+      "language": "javascript",
+      "symbols": [],
+      "imports": [],
+      "exports": [],
+      "summary": "Module file: web/ios/App/App/public/cordova.js",
+      "lastProcessed": "2026-11-13T07:44:55.296Z"
+    },
+    "web/ios/App/CapApp-SPM/README.md": {
+      "hash": "42c535861f4a866e35f85764ed6af1ea046d6a409bf9852ecb00e5d292a1626e",
+      "size": 162,
+      "mtimeMs": 1794507063000,
+      "language": "markdown",
+      "symbols": [],
+      "imports": [],
+      "exports": [],
+      "summary": "Documentation file.",
+      "lastProcessed": "2026-11-13T07:44:55.296Z"
+    },
+    "web/package.json": {
+      "hash": "fdd2607b871bc6b4f5174b93396f93702053b629ba2a950030ad1e9cfb5051dc",
+      "size": 949,
+      "mtimeMs": 1794555601559.9297,
+      "language": "json",
+      "symbols": [],
+      "imports": [],
+      "exports": [],
+      "summary": "Configuration module.",
+      "lastProcessed": "2026-11-13T07:44:55.296Z"
+    },
+    "web/src/geolocation.ts": {
+      "hash": "bd60a6595b11d70fcce28cfcd6c492775768be85fe0f82a1471018d1f113be78",
+      "size": 6361,
+      "mtimeMs": 1794556118057.1907,
+      "language": "typescript",
+      "symbols": [
+        "GeoError",
+        "getGeoOnce",
+        "isGeoSupported",
+        "isNativeGeo",
+        "watchGeo"
+      ],
+      "imports": [
+        "@capacitor/core"
+      ],
+      "exports": [
+        "GeoError",
+        "getGeoOnce",
+        "isGeoSupported",
+        "isNativeGeo",
+        "watchGeo"
+      ],
+      "summary": "Defines GeoError, getGeoOnce, isGeoSupported.",
+      "lastProcessed": "2026-11-13T07:51:13.143Z"
     },
     "web/src/gpsFilter.test.ts": {
       "hash": "e6a16a5a7481f8ab61ddd4453c8614586720d4d4b1a5d4cbd25364f8e8a4dbb8",
@@ -62,7 +336,7 @@
       ],
       "exports": [],
       "summary": "Module file: web/src/gpsFilter.test.ts",
-      "lastProcessed": "2026-11-12T11:53:36.601Z"
+      "lastProcessed": "2026-11-13T07:44:55.297Z"
     },
     "web/src/gpsFilter.ts": {
       "hash": "206806ae1d7155f8af48f9647e06d5de053929f543eb8e4a47d265e83eea8a33",
@@ -85,12 +359,12 @@
         "GPS_FILTER_CONFIG"
       ],
       "summary": "Defines accuracyQuality, createGpsFilter, formatAccuracy.",
-      "lastProcessed": "2026-11-12T11:53:36.602Z"
+      "lastProcessed": "2026-11-13T07:44:55.297Z"
     },
     "web/src/main.ts": {
-      "hash": "4fa6edbad51ea7af160e2eda239bc554821e457262e9e2ce70cb3848dbd289be",
-      "size": 88326,
-      "mtimeMs": 1794554064696.9773,
+      "hash": "b6fbf4464db90192aa6f2c759e5c3e90d0684a15e6ac7f6930c198fe4d0f8e18",
+      "size": 88932,
+      "mtimeMs": 1794555376746.4104,
       "language": "typescript",
       "symbols": [],
       "imports": [
@@ -103,7 +377,7 @@
       ],
       "exports": [],
       "summary": "Module file: web/src/main.ts",
-      "lastProcessed": "2026-11-13T07:14:45.180Z"
+      "lastProcessed": "2026-11-13T07:44:55.298Z"
     },
     "web/src/map/palette.ts": {
       "hash": "02b44f7512b56f428d0123a09d2e7d6ab8d34fab30e1b1f3a74dec9e106bb4c9",
@@ -118,7 +392,7 @@
         "palette"
       ],
       "summary": "Defines palette.",
-      "lastProcessed": "2026-11-13T07:14:45.181Z"
+      "lastProcessed": "2026-11-13T07:44:55.298Z"
     },
     "web/src/map/style.json": {
       "hash": "c90dbfd0e428f7ea40740c29e789167c24f79e91327761960e08c44ca8f7795e",
@@ -129,7 +403,7 @@
       "imports": [],
       "exports": [],
       "summary": "Configuration module.",
-      "lastProcessed": "2026-11-12T16:06:55.717Z"
+      "lastProcessed": "2026-11-13T07:44:55.299Z"
     },
     "web/src/map/style.ts": {
       "hash": "b451e523ea3fcab5b17517acd9522831d0b03659c32ded3eae756f87f7d4bfcd",
@@ -148,7 +422,7 @@
         "buildMapStyle"
       ],
       "summary": "Defines buildMapStyle.",
-      "lastProcessed": "2026-11-12T19:27:31.067Z"
+      "lastProcessed": "2026-11-13T07:44:55.299Z"
     },
     "web/src/online.ts": {
       "hash": "4165de460d2acd0d292ad9a66be0e3796b4cdce6bb800370bed623d40adaaa38",
@@ -180,7 +454,7 @@
         "submitRun"
       ],
       "summary": "Defines ensureAnonymousSession, fetchCityAt, fetchLeaderboard.",
-      "lastProcessed": "2026-11-13T07:14:45.181Z"
+      "lastProcessed": "2026-11-13T07:44:55.299Z"
     },
     "web/src/supabase.ts": {
       "hash": "8edba2ffaacca7bbdd8ab6a9c2bd826f4369e459edbaad1a61e46519b73d3c91",
@@ -197,7 +471,7 @@
         "supabase"
       ],
       "summary": "Defines supabase.",
-      "lastProcessed": "2026-11-13T07:14:45.182Z"
+      "lastProcessed": "2026-11-13T07:44:55.299Z"
     },
     "web/src/territory.test.ts": {
       "hash": "827fa57aac5a01cd439482b0595a0b5e61b1ce982ce5b65c2615d8c99b309121",
@@ -213,7 +487,7 @@
       ],
       "exports": [],
       "summary": "Module file: web/src/territory.test.ts",
-      "lastProcessed": "2026-11-12T11:53:36.603Z"
+      "lastProcessed": "2026-11-13T07:44:55.300Z"
     },
     "web/src/territory.ts": {
       "hash": "c1eef9e4a3c80c830b257fd90049b3d677cf16fcab21f009849df8a35584a6a4",
@@ -257,7 +531,7 @@
         "MIN_GAIN_M2"
       ],
       "summary": "Defines boundaryCrossing, boundaryExitPoint, captureTerritory.",
-      "lastProcessed": "2026-11-12T11:53:36.603Z"
+      "lastProcessed": "2026-11-13T07:44:55.300Z"
     },
     "web/tsconfig.json": {
       "hash": "8cfeed07c93e188fcabfa02ec52e1dcbd2874e203c98037c20da795bba40c323",
@@ -268,12 +542,12 @@
       "imports": [],
       "exports": [],
       "summary": "Configuration module.",
-      "lastProcessed": "2026-11-12T11:53:36.604Z"
+      "lastProcessed": "2026-11-13T07:44:55.301Z"
     },
     "web/vite.config.ts": {
-      "hash": "760aba639690ebca31f6222d83e13fabde20d0f924fc10177445ebf625181cae",
-      "size": 234,
-      "mtimeMs": 1794483939675.288,
+      "hash": "6f5abcb3743cc0bae2546168d8a4ca3c99f1278db9d6a50ec29866db7bf48b01",
+      "size": 539,
+      "mtimeMs": 1794555657770.946,
       "language": "typescript",
       "symbols": [],
       "imports": [
@@ -282,7 +556,7 @@
       ],
       "exports": [],
       "summary": "Configuration module.",
-      "lastProcessed": "2026-11-12T11:53:36.604Z"
+      "lastProcessed": "2026-11-13T07:44:55.301Z"
     }
   }
 }

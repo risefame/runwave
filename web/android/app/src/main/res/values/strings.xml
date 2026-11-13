@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Runwave</string>
+    <string name="title_activity_main">Runwave</string>
+    <string name="package_name">com.runwave.game</string>
+    <string name="custom_url_scheme">com.runwave.game</string>
+</resources>

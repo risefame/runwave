@@ -1382,6 +1382,11 @@ body {
   }
 }
 
+/* В нативном приложении запись идёт в фоне: браузерные подсказки не нужны. */
+.is-native .browser-only {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .menu,
   .scrim,
