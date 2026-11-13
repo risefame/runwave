@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-13T08:29:53.076Z",
+  "generatedAt": "2026-11-13T09:08:10.516Z",
   "root": ".",
   "parserVersion": 2,
   "graphVersion": 1,
@@ -384,9 +384,9 @@
       "lastProcessed": "2026-11-13T07:44:55.297Z"
     },
     "web/src/main.ts": {
-      "hash": "b6fbf4464db90192aa6f2c759e5c3e90d0684a15e6ac7f6930c198fe4d0f8e18",
-      "size": 88932,
-      "mtimeMs": 1794555376746.4104,
+      "hash": "261811e46db776df0e41109c397cfb0e3acbfec14a9fe07b33e7ffcf30c8efd6",
+      "size": 88965,
+      "mtimeMs": 1794560735443.1392,
       "language": "typescript",
       "symbols": [],
       "imports": [
@@ -399,7 +399,7 @@
       ],
       "exports": [],
       "summary": "Module file: web/src/main.ts",
-      "lastProcessed": "2026-11-13T07:44:55.298Z"
+      "lastProcessed": "2026-11-13T09:06:24.092Z"
     },
     "web/src/map/palette.ts": {
       "hash": "02b44f7512b56f428d0123a09d2e7d6ab8d34fab30e1b1f3a74dec9e106bb4c9",
@@ -447,11 +447,13 @@
       "lastProcessed": "2026-11-13T07:44:55.299Z"
     },
     "web/src/online.ts": {
-      "hash": "4165de460d2acd0d292ad9a66be0e3796b4cdce6bb800370bed623d40adaaa38",
-      "size": 8260,
-      "mtimeMs": 1794524769290.6343,
+      "hash": "5a1283171fc3df6586e85846878fd3acc7478c03bab12c762e9013743e1f1919",
+      "size": 11758,
+      "mtimeMs": 1794560828509.7896,
       "language": "typescript",
       "symbols": [
+        "createClientRunId",
+        "describeRejection",
         "ensureAnonymousSession",
         "fetchCityAt",
         "fetchLeaderboard",
@@ -466,6 +468,8 @@
         "geojson"
       ],
       "exports": [
+        "createClientRunId",
+        "describeRejection",
         "ensureAnonymousSession",
         "fetchCityAt",
         "fetchLeaderboard",
@@ -475,13 +479,13 @@
         "saveProfileName",
         "submitRun"
       ],
-      "summary": "Defines ensureAnonymousSession, fetchCityAt, fetchLeaderboard.",
-      "lastProcessed": "2026-11-13T07:44:55.299Z"
+      "summary": "Defines createClientRunId, describeRejection, ensureAnonymousSession.",
+      "lastProcessed": "2026-11-13T09:08:10.514Z"
     },
     "web/src/supabase.ts": {
-      "hash": "8edba2ffaacca7bbdd8ab6a9c2bd826f4369e459edbaad1a61e46519b73d3c91",
-      "size": 586,
-      "mtimeMs": 1794514788755.837,
+      "hash": "f3c88f93a94132639e5e90eaa11e17759804e0690bb510f04bd543c4461abf54",
+      "size": 1098,
+      "mtimeMs": 1794560707064.2183,
       "language": "typescript",
       "symbols": [
         "supabase"
@@ -493,7 +497,7 @@
         "supabase"
       ],
       "summary": "Defines supabase.",
-      "lastProcessed": "2026-11-13T07:44:55.299Z"
+      "lastProcessed": "2026-11-13T09:06:24.094Z"
     },
     "web/src/territory.test.ts": {
       "hash": "827fa57aac5a01cd439482b0595a0b5e61b1ce982ce5b65c2615d8c99b309121",

@@ -1,24 +1,49 @@
 {
-  "generatedAt": "2026-11-13T07:14:45.150Z",
+  "generatedAt": "2026-11-13T08:52:38.112Z",
   "rootDir": "C:\\Users\\ogoly\\Desktop\\Project\\приложение для бега",
-  "totalFiles": 29,
-  "totalDirectories": 9,
+  "totalFiles": 103,
+  "totalDirectories": 98,
   "byExtension": {
-    "[no-ext]": 1,
-    ".md": 3,
+    ".yml": 2,
+    "[no-ext]": 10,
+    ".md": 4,
     ".sql": 8,
-    ".html": 1,
-    ".json": 3,
-    ".webmanifest": 1,
-    ".ts": 10,
-    ".css": 1,
+    ".gradle": 8,
+    ".pro": 1,
+    ".java": 3,
+    ".xml": 13,
+    ".json": 9,
+    ".js": 8,
+    ".css": 3,
+    ".html": 3,
+    ".webmanifest": 3,
+    ".jar": 1,
+    ".properties": 2,
+    ".bat": 1,
+    ".ts": 12,
+    ".swift": 4,
+    ".storyboard": 2,
+    ".plist": 2,
+    ".pbxproj": 1,
+    ".podspec": 1,
+    ".xcconfig": 1,
     ".jsonc": 1
   },
   "files": [
     {
+      "path": ".github/workflows/android.yml",
+      "bytes": 1749,
+      "mtimeMs": 1794558563680.4998
+    },
+    {
+      "path": ".github/workflows/ios.yml",
+      "bytes": 5193,
+      "mtimeMs": 1794557571097.6729
+    },
+    {
       "path": ".gitignore",
-      "bytes": 581,
-      "mtimeMs": 1794482462834.1797
+      "bytes": 905,
+      "mtimeMs": 1794555763700.2405
     },
     {
       "path": "AGENTS.md",
@@ -76,19 +101,379 @@
       "mtimeMs": 1794513223203.3784
     },
     {
+      "path": "web/android/.gitignore",
+      "bytes": 1824,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/android/app/.gitignore",
+      "bytes": 26,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/android/app/build.gradle",
+      "bytes": 2130,
+      "mtimeMs": 1794555687886.4973
+    },
+    {
+      "path": "web/android/app/capacitor.build.gradle",
+      "bytes": 429,
+      "mtimeMs": 1794556312057.9614
+    },
+    {
+      "path": "web/android/app/proguard-rules.pro",
+      "bytes": 751,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/android/app/src/androidTest/java/com/getcapacitor/myapp/ExampleInstrumentedTest.java",
+      "bytes": 774,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/android/app/src/main/AndroidManifest.xml",
+      "bytes": 2137,
+      "mtimeMs": 1794555743906.1462
+    },
+    {
+      "path": "web/android/app/src/main/assets/capacitor.config.json",
+      "bytes": 75,
+      "mtimeMs": 1794556311999.8591
+    },
+    {
+      "path": "web/android/app/src/main/assets/capacitor.plugins.json",
+      "bytes": 134,
+      "mtimeMs": 1794556312027.975
+    },
+    {
+      "path": "web/android/app/src/main/assets/public/assets/index-CnmnVvaw.js",
+      "bytes": 1433967,
+      "mtimeMs": 1794556181134.973
+    },
+    {
+      "path": "web/android/app/src/main/assets/public/assets/index-ZYYCPfTW.css",
+      "bytes": 89301,
+      "mtimeMs": 1794556181134.973
+    },
+    {
+      "path": "web/android/app/src/main/assets/public/assets/web-wd_68JSM.js",
+      "bytes": 6323,
+      "mtimeMs": 1794556181134.973
+    },
+    {
+      "path": "web/android/app/src/main/assets/public/cordova_plugins.js",
+      "bytes": 0,
+      "mtimeMs": 1794556312054.633
+    },
+    {
+      "path": "web/android/app/src/main/assets/public/cordova.js",
+      "bytes": 0,
+      "mtimeMs": 1794556312054.633
+    },
+    {
+      "path": "web/android/app/src/main/assets/public/index.html",
+      "bytes": 15696,
+      "mtimeMs": 1794556181133.9707
+    },
+    {
+      "path": "web/android/app/src/main/assets/public/manifest.webmanifest",
+      "bytes": 840,
+      "mtimeMs": 1794555729529.1736
+    },
+    {
+      "path": "web/android/app/src/main/java/com/runwave/game/MainActivity.java",
+      "bytes": 120,
+      "mtimeMs": 1794555687885.474
+    },
+    {
+      "path": "web/android/app/src/main/res/drawable-v24/ic_launcher_foreground.xml",
+      "bytes": 1880,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/android/app/src/main/res/drawable/ic_launcher_background.xml",
+      "bytes": 5606,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/android/app/src/main/res/layout/activity_main.xml",
+      "bytes": 535,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml",
+      "bytes": 380,
+      "mtimeMs": 1794555704840.09
+    },
+    {
+      "path": "web/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml",
+      "bytes": 380,
+      "mtimeMs": 1794555704839.5754
+    },
+    {
+      "path": "web/android/app/src/main/res/values/ic_launcher_background.xml",
+      "bytes": 120,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/android/app/src/main/res/values/strings.xml",
+      "bytes": 286,
+      "mtimeMs": 1794555687887.5
+    },
+    {
+      "path": "web/android/app/src/main/res/values/styles.xml",
+      "bytes": 823,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/android/app/src/main/res/xml/config.xml",
+      "bytes": 185,
+      "mtimeMs": 1794556312056.8687
+    },
+    {
+      "path": "web/android/app/src/main/res/xml/file_paths.xml",
+      "bytes": 213,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/android/app/src/test/java/com/getcapacitor/myapp/ExampleUnitTest.java",
+      "bytes": 402,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/android/build.gradle",
+      "bytes": 637,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/android/capacitor-cordova-android-plugins/build.gradle",
+      "bytes": 1668,
+      "mtimeMs": 1794556312058.9656
+    },
+    {
+      "path": "web/android/capacitor-cordova-android-plugins/cordova.variables.gradle",
+      "bytes": 312,
+      "mtimeMs": 1794556312059.969
+    },
+    {
+      "path": "web/android/capacitor-cordova-android-plugins/src/main/AndroidManifest.xml",
+      "bytes": 210,
+      "mtimeMs": 1794556312059.969
+    },
+    {
+      "path": "web/android/capacitor-cordova-android-plugins/src/main/java/.gitkeep",
+      "bytes": 0,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/android/capacitor-cordova-android-plugins/src/main/res/.gitkeep",
+      "bytes": 1,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/android/capacitor.settings.gradle",
+      "bytes": 368,
+      "mtimeMs": 1794556312057.9614
+    },
+    {
+      "path": "web/android/gradle.properties",
+      "bytes": 987,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/android/gradle/wrapper/gradle-wrapper.jar",
+      "bytes": 43764,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/android/gradle/wrapper/gradle-wrapper.properties",
+      "bytes": 253,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/android/gradlew",
+      "bytes": 8733,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/android/gradlew.bat",
+      "bytes": 2937,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/android/settings.gradle",
+      "bytes": 208,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/android/variables.gradle",
+      "bytes": 498,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/capacitor.config.ts",
+      "bytes": 988,
+      "mtimeMs": 1794556306017.445
+    },
+    {
       "path": "web/index.html",
-      "bytes": 15584,
-      "mtimeMs": 1794552610889.9883
+      "bytes": 15597,
+      "mtimeMs": 1794555389845.2666
+    },
+    {
+      "path": "web/ios/.gitignore",
+      "bytes": 206,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/ios/App/App.xcodeproj/project.pbxproj",
+      "bytes": 14931,
+      "mtimeMs": 1794555695593.8472
+    },
+    {
+      "path": "web/ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist",
+      "bytes": 238,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/ios/App/App/AppDelegate.swift",
+      "bytes": 2504,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/ios/App/App/Assets.xcassets/AppIcon.appiconset/Contents.json",
+      "bytes": 209,
+      "mtimeMs": 1794555704747.2964
+    },
+    {
+      "path": "web/ios/App/App/Assets.xcassets/Contents.json",
+      "bytes": 62,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/ios/App/App/Assets.xcassets/Splash.imageset/Contents.json",
+      "bytes": 1124,
+      "mtimeMs": 1794555706524.0168
+    },
+    {
+      "path": "web/ios/App/App/Base.lproj/LaunchScreen.storyboard",
+      "bytes": 1994,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/ios/App/App/Base.lproj/Main.storyboard",
+      "bytes": 1019,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/ios/App/App/capacitor.config.json",
+      "bytes": 128,
+      "mtimeMs": 1794556312228.1628
+    },
+    {
+      "path": "web/ios/App/App/config.xml",
+      "bytes": 185,
+      "mtimeMs": 1794556312213.5444
+    },
+    {
+      "path": "web/ios/App/App/Info.plist",
+      "bytes": 2722,
+      "mtimeMs": 1794555743906.1462
+    },
+    {
+      "path": "web/ios/App/App/public/assets/index-CnmnVvaw.js",
+      "bytes": 1433967,
+      "mtimeMs": 1794556181134.973
+    },
+    {
+      "path": "web/ios/App/App/public/assets/index-ZYYCPfTW.css",
+      "bytes": 89301,
+      "mtimeMs": 1794556181134.973
+    },
+    {
+      "path": "web/ios/App/App/public/assets/web-wd_68JSM.js",
+      "bytes": 6323,
+      "mtimeMs": 1794556181134.973
+    },
+    {
+      "path": "web/ios/App/App/public/cordova_plugins.js",
+      "bytes": 0,
+      "mtimeMs": 1794556312211.5142
+    },
+    {
+      "path": "web/ios/App/App/public/cordova.js",
+      "bytes": 0,
+      "mtimeMs": 1794556312211.0059
+    },
+    {
+      "path": "web/ios/App/App/public/index.html",
+      "bytes": 15696,
+      "mtimeMs": 1794556181133.9707
+    },
+    {
+      "path": "web/ios/App/App/public/manifest.webmanifest",
+      "bytes": 840,
+      "mtimeMs": 1794555729529.1736
+    },
+    {
+      "path": "web/ios/App/App/SceneDelegate.swift",
+      "bytes": 899,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/ios/App/CapApp-SPM/.gitignore",
+      "bytes": 165,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/ios/App/CapApp-SPM/Package.swift",
+      "bytes": 914,
+      "mtimeMs": 1794556312215.0728
+    },
+    {
+      "path": "web/ios/App/CapApp-SPM/README.md",
+      "bytes": 162,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/ios/App/CapApp-SPM/Sources/CapApp-SPM/CapApp-SPM.swift",
+      "bytes": 33,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/ios/capacitor-cordova-ios-plugins/CordovaPluginsResources.podspec",
+      "bytes": 379,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/ios/capacitor-cordova-ios-plugins/resources/.gitkeep",
+      "bytes": 1,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/ios/capacitor-cordova-ios-plugins/sources/.gitkeep",
+      "bytes": 1,
+      "mtimeMs": 1794507063000
+    },
+    {
+      "path": "web/ios/debug.xcconfig",
+      "bytes": 23,
+      "mtimeMs": 1794507063000
     },
     {
       "path": "web/package.json",
-      "bytes": 660,
-      "mtimeMs": 1794514755776.7305
+      "bytes": 924,
+      "mtimeMs": 1794558567930.1013
     },
     {
       "path": "web/public/manifest.webmanifest",
-      "bytes": 807,
-      "mtimeMs": 1794483816123.2412
+      "bytes": 840,
+      "mtimeMs": 1794555729529.1736
+    },
+    {
+      "path": "web/src/geolocation.ts",
+      "bytes": 6361,
+      "mtimeMs": 1794556118057.1907
     },
     {
       "path": "web/src/gpsFilter.test.ts",
@@ -102,8 +487,8 @@
     },
     {
       "path": "web/src/main.ts",
-      "bytes": 88326,
-      "mtimeMs": 1794554064696.9773
+      "bytes": 88932,
+      "mtimeMs": 1794555376746.4104
     },
     {
       "path": "web/src/map/palette.ts",
@@ -127,8 +512,8 @@
     },
     {
       "path": "web/src/style.css",
-      "bytes": 26275,
-      "mtimeMs": 1794553959496.1543
+      "bytes": 26461,
+      "mtimeMs": 1794555389845.2666
     },
     {
       "path": "web/src/supabase.ts",
@@ -152,8 +537,8 @@
     },
     {
       "path": "web/vite.config.ts",
-      "bytes": 234,
-      "mtimeMs": 1794483939675.288
+      "bytes": 235,
+      "mtimeMs": 1794558563680.4998
     },
     {
       "path": "web/wrangler.jsonc",
@@ -167,9 +552,14 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "cap:sync": "npm run build && npx cap sync"
   },
   "dependencies": [
+    "@capacitor/android",
+    "@capacitor/core",
+    "@capacitor/ios",
+    "@capgo/background-geolocation",
     "@supabase/supabase-js",
     "@turf/area",
     "@turf/center-of-mass",
@@ -177,6 +567,8 @@
     "@turf/length",
     "@turf/union",
     "maplibre-gl",
+    "@capacitor/assets",
+    "@capacitor/cli",
     "@types/geojson",
     "typescript",
     "vite",

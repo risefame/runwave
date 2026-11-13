@@ -34,6 +34,8 @@ import {
 import { buildMapStyle } from './map/style';
 import { palette } from './map/palette';
 import {
+  createClientRunId,
+  describeRejection,
   ensureAnonymousSession,
   fetchCityAt,
   fetchLeaderboard,
@@ -95,6 +97,8 @@ interface RunSnapshot {
 interface ActiveRunJournal {
   points: RunPoint[];
   rings: LngLat[][];
+  /** UUID забега: повтор отправки должен вернуть тот же результат. */
+  clientRunId: string;
   distance: number;
   time: number;
   savedAt: number;
@@ -306,6 +310,7 @@ let onlineCityName: string | null = null;
 let leaderboardRows: LeaderboardRow[] = [];
 let runPoints: RunPoint[] = [];
 let runRings: LngLat[][] = [];
+let runClientId = '';
 let lastRunPointTime = 0;
 let geoPermission: 'unknown' | 'granted' | 'denied' | 'prompt' = 'unknown';
 let activeRunSavedAt = 0;
@@ -1333,6 +1338,7 @@ function saveActiveRun(force = false): void {
   const journal: ActiveRunJournal = {
     points: runPoints,
     rings: runRings,
+    clientRunId: runClientId,
     distance,
     time: runTime,
     savedAt: now,
@@ -1364,6 +1370,10 @@ function readActiveRun(): ActiveRunJournal | null {
           Number.isFinite(point.accuracy),
       ),
       rings: parsed.rings,
+      clientRunId:
+        typeof parsed.clientRunId === 'string' && parsed.clientRunId
+          ? parsed.clientRunId
+          : createClientRunId(),
       distance: Number(parsed.distance ?? 0),
       time: Number(parsed.time ?? 0),
       savedAt: Number(parsed.savedAt ?? 0),
@@ -1634,25 +1644,14 @@ function pushRunPoint(lon: number, lat: number, t: number, accuracy: number): vo
 }
 
 function rejectionText(reason: string | undefined): string {
-  switch (reason) {
-    case 'speed':
-      return 'скорость выше 7 м/с';
-    case 'accuracy':
-      return 'точность GPS хуже 25 м';
-    case 'accuracy_missing':
-      return 'нет данных о точности GPS';
-    case 'jump':
-      return 'нереальный скачок координат';
-    case 'timestamps':
-      return 'нарушен порядок времени';
-    case 'too_many_points':
-      return 'слишком много точек';
-    default:
-      return 'трек не прошёл проверку';
-  }
+  return describeRejection(reason);
 }
 
-async function submitOnlineRun(points: RunPoint[], rings: LngLat[][]): Promise<boolean> {
+async function submitOnlineRun(
+  points: RunPoint[],
+  rings: LngLat[][],
+  clientRunId = runClientId,
+): Promise<boolean> {
   if (!onlineEnabled || !onlineReady || onlineBusy) return false;
 
   onlineBusy = true;
@@ -1661,6 +1660,7 @@ async function submitOnlineRun(points: RunPoint[], rings: LngLat[][]): Promise<b
   const { result, error } = await submitRun(
     points,
     rings.map((ring) => ring.map(([lon, lat]) => [lon, lat] as [number, number])),
+    clientRunId || createClientRunId(),
   );
   onlineBusy = false;
 
@@ -1925,6 +1925,7 @@ function startRun(): void {
   currentSpeed = 0;
   runPoints = [];
   runRings = [];
+  runClientId = createClientRunId();
   lastRunPointTime = 0;
   clearActiveRun();
   activeRunSavedAt = 0;
@@ -1972,9 +1973,10 @@ function stopRun(): void {
   if (!canSubmit) {
     clearActiveRun();
   } else {
-    void submitOnlineRun(points, rings).then((handled) => {
+    void submitOnlineRun(points, rings, runClientId).then((handled) => {
       if (handled) {
         clearActiveRun();
+        runClientId = '';
       } else {
         restoreActiveRunButton();
       }
@@ -2572,10 +2574,12 @@ onlineRecoverButton.addEventListener('click', () => {
   }
 
   onlineRecoverButton.disabled = true;
-  void submitOnlineRun(journal.points, journal.rings).then((handled) => {
-    onlineRecoverButton.disabled = false;
-    if (handled) clearActiveRun();
-  });
+  void submitOnlineRun(journal.points, journal.rings, journal.clientRunId).then(
+    (handled) => {
+      onlineRecoverButton.disabled = false;
+      if (handled) clearActiveRun();
+    },
+  );
 });
 
 seasonPillEl.addEventListener('click', () => {

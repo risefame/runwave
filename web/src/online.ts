@@ -48,6 +48,68 @@ export interface OnlineTerritoryProperties {
 
 export type OnlineTerritories = FeatureCollection<Geometry, OnlineTerritoryProperties>;
 
+/** UUID забега: один и тот же для повторов и восстановления после сбоя. */
+export function createClientRunId(): string {
+  const uuid = globalThis.crypto?.randomUUID?.();
+  if (uuid) return uuid;
+
+  // Запасной вариант для старых WebView без crypto.randomUUID.
+  const bytes = new Uint8Array(16);
+  globalThis.crypto?.getRandomValues?.(bytes);
+  for (let i = 0; i < bytes.length; i += 1) {
+    if (bytes[i] === 0) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+/** Человеческий текст для кодов отклонения забега с сервера. */
+export function describeRejection(reason: string | undefined): string {
+  switch (reason) {
+    case 'speed':
+      return 'скорость выше 7 м/с';
+    case 'accuracy':
+      return 'точность GPS хуже 25 м';
+    case 'accuracy_missing':
+      return 'нет данных о точности GPS';
+    case 'jump':
+      return 'нереальный скачок координат';
+    case 'timestamps':
+      return 'нарушен порядок времени';
+    case 'future_timestamp':
+      return 'время забега из будущего — проверь часы устройства';
+    case 'late_submission':
+      return 'забег отправлен слишком поздно после финиша';
+    case 'too_many_points':
+      return 'слишком много точек';
+    case 'too_many_runs':
+      return 'слишком много забегов за сутки';
+    case 'daily_points_cap':
+      return 'дневной лимит очков исчерпан';
+    case 'duplicate_points':
+      return 'трек состоит из повторяющихся точек';
+    case 'regular_intervals':
+      return 'трек слишком ровный — похоже на подделку';
+    case 'area_implausible':
+      return 'площадь не сходится с пройденной дистанцией';
+    case 'ring_off_track':
+      return 'контур территории собран не из точек трека';
+    case 'ring_not_closed':
+      return 'контур не замкнут по треку';
+    case 'ring_not_ordered':
+      return 'контур собран не по порядку трека';
+    case 'ring_boundary_arc':
+      return 'захват присоединением к своей границе онлайн не засчитывается';
+    case 'ring_untracked':
+      return 'контур территории не совпал с треком и не засчитан';
+    default:
+      return 'трек не прошёл проверку';
+  }
+}
+
 export interface Bbox {
   west: number;
   south: number;
@@ -72,6 +134,9 @@ function friendly(message: string): string {
   }
   if (text.includes('failed to fetch') || text.includes('networkerror')) {
     return 'Нет связи с Supabase. Проверь интернет и URL проекта.';
+  }
+  if (text.includes('submit_run_v2')) {
+    return 'База не обновлена: примени supabase/migrations/0005_run_security.sql в SQL Editor.';
   }
   if (
     text.includes('could not find the function') ||
@@ -139,10 +204,14 @@ export async function saveProfileName(name: string): Promise<string | null> {
 export async function submitRun(
   points: RunPoint[],
   rings: Array<Array<[number, number]>> = [],
+  clientRunId: string = createClientRunId(),
 ): Promise<{ result: SubmitResult | null; error: string | null }> {
-  const { data, error } = await supabase.rpc('submit_run', {
+  // client_run_id делает отправку идемпотентной: повтор с тем же ключом
+  // возвращает прежний результат и ничего не начисляет.
+  const { data, error } = await supabase.rpc('submit_run_v2', {
     p_points: points,
     p_rings: rings,
+    p_client_run_id: clientRunId,
   });
   if (error) return { result: null, error: friendly(error.message) };
 
