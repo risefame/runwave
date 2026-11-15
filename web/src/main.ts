@@ -35,7 +35,7 @@ import {
 } from './geolocation';
 import { describeGeoStatus, GEO_READY_ACCURACY_M } from './geoStatus';
 import { buildMapStyle } from './map/style';
-import { palette } from './map/palette';
+import { paletteFor, type Theme } from './map/palette';
 import {
   createClientRunId,
   describeRejection,
@@ -90,6 +90,9 @@ const ACCURACY_PULSE_MS = 700; // период пульсации круга т�
 
 type Units = 'metric' | 'imperial';
 
+/** Тема оформления: явный выбор игрока или как в системе. */
+type ThemeMode = Theme | 'system';
+
 /** Реальные забеги и тестовая имитация хранятся и считаются раздельно. */
 type GameMode = 'real' | 'test';
 
@@ -116,6 +119,7 @@ interface StoredSettings {
   rotateByHeading?: boolean;
   online?: boolean;
   geo?: boolean;
+  theme?: ThemeMode;
 }
 
 function readStoredSettings(): StoredSettings | null {
@@ -159,6 +163,16 @@ let lightMap =
   typeof initialSettings?.lightMap === 'boolean' ? initialSettings.lightMap : isWeakDevice();
 let rotateByHeading = initialSettings?.rotateByHeading === true;
 let onlineEnabled = initialSettings?.online !== false;
+let themeMode: ThemeMode = initialSettings?.theme ?? 'system';
+
+/** Системная тема: следим за настройкой устройства, пока выбран режим «Система». */
+const systemThemeQuery = window.matchMedia('(prefers-color-scheme: light)');
+
+/** Итоговая тема: «системная» раскрывается в светлую или тёмную. */
+function resolvedTheme(): Theme {
+  if (themeMode === 'system') return systemThemeQuery.matches ? 'light' : 'dark';
+  return themeMode;
+}
 
 /** Позиция с прошлого запуска: стартовая камера не должна прыгать в Москву. */
 function readLastPosition(): LngLat | null {
@@ -257,12 +271,16 @@ const sumOnlineEl = byId<HTMLParagraphElement>('sum-online');
 const seasonPillEl = byId<HTMLButtonElement>('season-pill');
 const seasonPillRankEl = byId('season-pill-rank');
 const seasonPillPointsEl = byId('season-pill-points');
+const themeLightButton = byId<HTMLButtonElement>('btn-theme-light');
+const themeDarkButton = byId<HTMLButtonElement>('btn-theme-dark');
+const themeSystemButton = byId<HTMLButtonElement>('btn-theme-system');
+const themeColorMeta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
 
 const hasSavedPosition = savedPosition !== null;
 
 const map = new MapLibreMap({
   container: 'map',
-  style: buildMapStyle({ light: lightMap }),
+  style: buildMapStyle({ light: lightMap, theme: resolvedTheme() }),
   center: savedPosition ?? [WORLD_CENTER[0], WORLD_CENTER[1]],
   zoom: hasSavedPosition ? 15.2 : WORLD_ZOOM,
   pitch: hasSavedPosition ? DEFAULT_PITCH : 0,
@@ -433,6 +451,7 @@ function updateRoute(): void {
 }
 
 function applyBuildings3D(): void {
+  const palette = paletteFor(resolvedTheme());
   const existing = map.getLayer(BUILDINGS_3D_LAYER_ID);
 
   if (!buildings3d) {
@@ -489,6 +508,7 @@ function applyBuildings3D(): void {
 
 /** Игровые слои добавляются заново после каждой смены подложки. */
 function addOverlayLayers(): void {
+  const palette = paletteFor(resolvedTheme());
   if (!map.getSource('territories')) {
     map.addSource('territories', { type: 'geojson', data: territoryCollection() });
   }
@@ -632,7 +652,7 @@ function addOverlayLayers(): void {
           4,
           palette.overlay.trailFast,
           6,
-          '#ffffff',
+          palette.overlay.trailMax,
         ],
         'line-width': ['interpolate', ['linear'], ['get', 'speed'], 0, 2.6, 6, 4.6],
         'line-blur': 0.8,
@@ -1068,6 +1088,9 @@ function loadSettings(): void {
   if (!parsed) return;
   if (parsed.units === 'imperial') units = 'imperial';
   if (parsed.timeScale === 10 && devMode) timeScale = 10;
+  if (parsed.theme === 'light' || parsed.theme === 'dark' || parsed.theme === 'system') {
+    themeMode = parsed.theme;
+  }
 }
 
 function saveSettings(): void {
@@ -1082,6 +1105,7 @@ function saveSettings(): void {
         rotateByHeading,
         online: onlineEnabled,
         geo: geoActive,
+        theme: themeMode,
       } satisfies StoredSettings),
     );
   } catch {
@@ -1361,6 +1385,42 @@ function applyMapSettings(): void {
   lightMapButton.setAttribute('aria-checked', String(lightMap));
   rotateHeadingButton.setAttribute('aria-checked', String(rotateByHeading));
 }
+
+// ——— Тема оформления ———
+
+const THEME_COLORS: Record<Theme, string> = {
+  dark: '#06080d',
+  light: '#eef3f8',
+};
+
+/** Тема применяется к CSS-переменным интерфейса и к строке состояния. */
+function applyTheme(): void {
+  const theme = resolvedTheme();
+  document.documentElement.dataset.theme = theme;
+  themeColorMeta?.setAttribute('content', THEME_COLORS[theme]);
+  themeLightButton.setAttribute('aria-pressed', String(themeMode === 'light'));
+  themeDarkButton.setAttribute('aria-pressed', String(themeMode === 'dark'));
+  themeSystemButton.setAttribute('aria-pressed', String(themeMode === 'system'));
+}
+
+/** Подложка карты пересобирается под новую тему. */
+function applyMapTheme(): void {
+  map.setStyle(buildMapStyle({ light: lightMap, theme: resolvedTheme() }), { diff: false });
+}
+
+function setThemeMode(mode: ThemeMode): void {
+  if (themeMode === mode) return;
+  themeMode = mode;
+  applyTheme();
+  saveSettings();
+  applyMapTheme();
+}
+
+systemThemeQuery.addEventListener('change', () => {
+  if (themeMode !== 'system') return;
+  applyTheme();
+  applyMapTheme();
+});
 
 // ——— Онлайн ———
 
@@ -2731,7 +2791,7 @@ lightMapButton.addEventListener('click', () => {
   lightMap = !lightMap;
   applyMapSettings();
   saveSettings();
-  map.setStyle(buildMapStyle({ light: lightMap }), { diff: false });
+  applyMapTheme();
 });
 
 rotateHeadingButton.addEventListener('click', () => {
@@ -2739,6 +2799,12 @@ rotateHeadingButton.addEventListener('click', () => {
   applyMapSettings();
   saveSettings();
 });
+
+themeLightButton.addEventListener('click', () => setThemeMode('light'));
+
+themeDarkButton.addEventListener('click', () => setThemeMode('dark'));
+
+themeSystemButton.addEventListener('click', () => setThemeMode('system'));
 
 onlineToggleButton.addEventListener('click', () => {
   onlineEnabled = !onlineEnabled;
@@ -2907,6 +2973,7 @@ applyUnits();
 applyTimeScale();
 applyGeoSwitch();
 applyMapSettings();
+applyTheme();
 applyOnline();
 applyDevMode();
 renderGeoStatus();

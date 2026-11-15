@@ -1,6 +1,9 @@
 import type { StyleSpecification } from 'maplibre-gl';
 import rawStyle from './style.json';
-import { palette } from './palette';
+import { darkPalette, paletteFor, type MapPalette, type Theme } from './palette';
+
+/** Палитра текущей сборки стиля: buildMapStyle синхронный, одного значения хватает. */
+let palette: MapPalette = darkPalette;
 
 interface RawLayer {
   id: string;
@@ -519,9 +522,15 @@ function tuneLayer(layer: RawLayer, light: boolean): void {
 export interface MapStyleOptions {
   /** Облегчённая подложка для слабых телефонов. */
   light?: boolean;
+  /** Тема оформления карты: светлая или тёмная. */
+  theme?: Theme;
 }
 
-export function buildMapStyle({ light = false }: MapStyleOptions = {}): StyleSpecification {
+export function buildMapStyle({
+  light = false,
+  theme = 'dark',
+}: MapStyleOptions = {}): StyleSpecification {
+  palette = paletteFor(theme);
   const layers: RawLayer[] = [];
 
   for (const layer of base.layers) {

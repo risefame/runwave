@@ -7,6 +7,24 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <meta name="theme-color" content="#06080d" />
+    <script>
+      // Тема применяется до первой отрисовки, чтобы не было вспышки чужого оформления.
+      (function () {
+        try {
+          var stored = localStorage.getItem('runwave:settings:v1');
+          var pref = stored ? JSON.parse(stored).theme : 'system';
+          var dark =
+            pref === 'dark' ||
+            (pref !== 'light' && !window.matchMedia('(prefers-color-scheme: light)').matches);
+          var theme = dark ? 'dark' : 'light';
+          document.documentElement.dataset.theme = theme;
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', dark ? '#06080d' : '#eef3f8');
+        } catch (error) {
+          document.documentElement.dataset.theme = 'dark';
+        }
+      })();
+    </script>
     <meta
       name="description"
       content="Runwave — беговая игра: беги по городу и захватывай территории."
@@ -225,6 +243,18 @@
 
         <section class="menu-section" aria-label="Настройки">
           <h2 class="menu-title">Настройки</h2>
+
+          <div class="setting setting--stacked">
+            <div class="setting-text">
+              <span class="setting-name">Тема</span>
+              <span class="setting-desc">Оформление интерфейса и карты</span>
+            </div>
+            <div class="segmented" role="group" aria-label="Тема оформления">
+              <button id="btn-theme-light" type="button" aria-pressed="false">Светлая</button>
+              <button id="btn-theme-dark" type="button" aria-pressed="false">Тёмная</button>
+              <button id="btn-theme-system" type="button" aria-pressed="true">Система</button>
+            </div>
+          </div>
 
           <div class="setting dev-only">
             <div class="setting-text">
