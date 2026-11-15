@@ -37,7 +37,15 @@ jobs:
 
       - name: Capacitor sync (ios)
         working-directory: web
-        run: npx cap sync ios
+        env:
+          CAP_SERVER_URL: ${{ vars.APP_URL }}
+        run: |
+          if [ -n "${CAP_SERVER_URL}" ]; then
+            echo "APP_URL задан: приложение будет грузить сайт из облака"
+          else
+            echo "APP_URL не задан: используем локальную сборку (dist внутри IPA)"
+          fi
+          npx cap sync ios
 
       - name: Check Xcode version
         run: |
